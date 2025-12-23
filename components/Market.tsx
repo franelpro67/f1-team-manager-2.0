@@ -73,7 +73,7 @@ const Market: React.FC<MarketProps> = ({ team, onHireDriver, onSellDriver }) => 
                       onClick={() => onSellDriver(driver.id)}
                       className="w-full py-4 bg-red-600/10 text-red-500 border border-red-600/30 rounded-2xl font-black text-xs hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-3 uppercase tracking-widest"
                     >
-                      <Trash2 size={16} /> VENDER (+${(driver.cost * 0.5 / 1000000).toFixed(1)}M)
+                      <Trash2 size={16} /> VENDER (+${(driver.cost * 0.8 / 1000000).toFixed(1)}M)
                     </button>
                   ) : (
                     <button

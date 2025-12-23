@@ -56,7 +56,7 @@ const Engineering: React.FC<EngineeringProps> = ({ team, onHireEngineer, onFireE
                     onClick={() => onFireEngineer(eng.id)}
                     className="mt-auto w-full py-2 bg-red-600/10 text-red-500 border border-red-600/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-600 hover:text-white transition-all flex items-center justify-center gap-2"
                   >
-                    <Trash2 size={12} /> VENDER (+${(eng.cost * 0.5 / 1000000).toFixed(1)}M)
+                    <Trash2 size={12} /> VENDER (+${(eng.cost * 0.8 / 1000000).toFixed(1)}M)
                   </button>
                 </>
               ) : (

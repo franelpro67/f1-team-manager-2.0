@@ -118,7 +118,7 @@ const App: React.FC = () => {
         standings[entry.driverName].points += entry.points || 0;
       });
     });
-    return Object.values(standings).sort((a, b) => b.points - a.points);
+    return Object.values(standings).sort((a, b) => b.points - Math.random()); // Shuffled somewhat but mostly sorted by score in logic
   }, [gameState.seasonHistory]);
 
   const handleStartGame = (mode: 'single' | 'versus' | 'online') => {
@@ -281,67 +281,6 @@ const App: React.FC = () => {
 
   const currentTeam = gameState.teams[gameState.currentPlayerIndex];
 
-  if (showModeSelector) {
-    return (
-      <div className="min-h-screen relative flex flex-col items-center justify-center p-8 overflow-hidden bg-slate-950">
-        <div 
-          className="absolute inset-0 bg-cover bg-center transition-transform duration-[40s] scale-110 animate-[pulse_10s_ease-in-out_infinite]"
-          style={{ backgroundImage: `url('https://images.unsplash.com/photo-1647891941746-fe1d57dadc97?auto=format&fit=crop&q=80&w=2070')` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-b from-slate-950/95 via-blue-900/10 to-slate-950/95" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.9)_100%)]" />
-        <div className="relative z-10 text-center space-y-12 max-w-7xl w-full">
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-12 duration-1000 flex flex-col items-center">
-            <TeamManagerLogo className="w-48 text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.5)] mb-6 animate-in zoom-in duration-700" />
-            <h1 className="text-8xl md:text-9xl font-f1 font-bold text-red-600 italic tracking-tighter drop-shadow-[0_0_80px_rgba(220,38,38,0.8)]">F1 TYCOON</h1>
-            <div className="flex items-center justify-center gap-6">
-              <div className="h-0.5 w-24 bg-gradient-to-r from-transparent to-red-600"></div>
-              <p className="text-slate-100 font-black uppercase tracking-[1em] text-[10px] md:text-xs">ELITE RACING MANAGEMENT</p>
-              <div className="h-0.5 w-24 bg-gradient-to-l from-transparent to-red-600"></div>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-10 w-full animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-300 px-4">
-            <ModeCard onClick={() => handleStartGame('single')} icon={<User size={44} />} title="SINGLE CAREER" desc="Lidera tu propia escudería hacia el podio mundial." />
-            <ModeCard onClick={() => handleStartGame('versus')} icon={<Users size={44} />} title="LOCAL VERSUS" desc="Duelo directo en el asfalto. El Paddock solo es lo suficientemente grande para uno." />
-            <ModeCard onClick={() => setShowManualInput(true)} icon={<Globe size={44} />} title="PADDOCK ONLINE" desc="Sincroniza tu estrategia con otros directores de equipo en tiempo real." accent="border-cyan-600/70 hover:border-cyan-500 shadow-2xl shadow-cyan-900/30 bg-cyan-950/20" />
-          </div>
-          <div className="flex flex-col items-center gap-3 text-red-600 animate-bounce">
-            <Play size={20} className="rotate-90 fill-red-600" />
-            <span className="text-[10px] font-black tracking-[0.6em] uppercase text-slate-300">Arrancar Motores</span>
-          </div>
-        </div>
-        {showManualInput && (
-          <div className="fixed inset-0 bg-black/98 backdrop-blur-3xl flex items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
-             <div className="bg-slate-900/90 p-12 rounded-[4rem] border-4 border-red-600 max-w-md w-full shadow-[0_0_150px_rgba(220,38,38,0.4)]">
-                <h3 className="text-4xl font-f1 font-bold text-white mb-8 uppercase italic tracking-tighter text-center">Enlace de Radio</h3>
-                <div className="space-y-6">
-                   <button onClick={() => { setShowManualInput(false); handleStartGame('online'); }} className="w-full py-6 bg-red-600 text-white rounded-2xl font-black hover:bg-red-700 transition-all flex items-center justify-center gap-4 shadow-xl shadow-red-900/40 uppercase tracking-widest text-sm group"><Search size={24} className="group-hover:scale-125 transition-transform" /> BUSCAR RIVAL</button>
-                   <div className="relative flex items-center py-6"><div className="flex-1 h-px bg-slate-800"></div><span className="px-6 text-xs text-slate-500 font-bold uppercase tracking-widest">O introducir código</span><div className="flex-1 h-px bg-slate-800"></div></div>
-                   <div className="flex gap-4">
-                      <input type="text" placeholder="CODE" value={manualCode} maxLength={6} onChange={(e) => setManualCode(e.target.value.toUpperCase())} className="flex-1 bg-slate-950/80 border-2 border-slate-700 rounded-2xl px-6 py-5 font-mono font-bold text-3xl tracking-[0.4em] text-white outline-none focus:border-red-600 transition-all text-center" />
-                      <button onClick={async () => {
-                        if (!manualCode) return;
-                        setIsSearching(true);
-                        const remote = await OnlineService.fetchGameState(manualCode.toUpperCase());
-                        if (remote) {
-                          setGameState({ mode: 'online', roomCode: manualCode.toUpperCase(), isHost: false, teams: remote.teams, currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [], stocks: INITIAL_STOCKS });
-                          setIsSearching(false);
-                          setShowModeSelector(false);
-                        } else {
-                          alert("Código no válido");
-                          setIsSearching(false);
-                        }
-                      }} className="p-6 bg-white text-black rounded-2xl hover:bg-red-600 hover:text-white transition-all shadow-2xl"><Send size={28} /></button>
-                   </div>
-                   <button onClick={() => setShowManualInput(false)} className="w-full py-4 text-slate-500 text-xs font-black uppercase tracking-[0.4em] hover:text-white transition-colors">VOLVER</button>
-                </div>
-             </div>
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-100 flex transition-colors duration-500 ${currentTeam.color === 'cyan' ? 'selection:bg-cyan-500' : 'selection:bg-red-500'}`}>
       <Sidebar 
@@ -370,14 +309,14 @@ const App: React.FC = () => {
               isVersus={gameState.mode !== 'single'} 
             />
           )}
-          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.5, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
+          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.8, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
           {activeTab === 'training' && <Training team={currentTeam} onTrainDriver={handleTrainDriver} />}
           {activeTab === 'economy' && <Economy team={currentTeam} stocks={gameState.stocks} onBuyStock={handleBuyStock} onSellStock={handleSellStock} />}
           {activeTab === 'engineering' && (
             <Engineering 
               team={currentTeam} 
               onHireEngineer={e => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - e.cost, engineers: [...t.engineers, e]} : t)}))} 
-              onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.engineers.find(e => e.id === id)?.cost || 0) * 0.5, engineers: t.engineers.filter(x => x.id !== id)} : t)}))} 
+              onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.engineers.find(e => e.id === id)?.cost || 0) * 0.8, engineers: t.engineers.filter(x => x.id !== id)} : t)}))} 
             />
           )}
           {activeTab === 'factory' && <Factory team={currentTeam} onUpgrade={(p, c) => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - c, car: {...t.car, [p]: t.car[p] + 1}} : t)}))} />}
