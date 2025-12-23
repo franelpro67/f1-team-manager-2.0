@@ -130,8 +130,6 @@ const App: React.FC = () => {
         };
       });
 
-      const isSeasonEnd = prev.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON;
-
       return {
         ...prev,
         stocks: updatedStocks,
@@ -199,10 +197,42 @@ const App: React.FC = () => {
 
   const handleAcceptSponsor = (sponsor: Sponsor) => {
     setGameState(prev => {
-      const newTeams = [...prev.teams];
-      const team = newTeams[prev.currentPlayerIndex];
-      if (team.activeSponsorIds.length >= 3) return prev;
-      newTeams[prev.currentPlayerIndex] = { ...team, funds: team.funds + sponsor.signingBonus, activeSponsorIds: [...team.activeSponsorIds, sponsor.id], sponsorOffers: team.sponsorOffers.filter(o => o.id !== sponsor.id) };
+      const newTeams = prev.teams.map((team, i) => {
+        if (i !== prev.currentPlayerIndex) return team;
+        if (team.activeSponsorIds.length >= 3) return team;
+        return {
+          ...team,
+          funds: team.funds + sponsor.signingBonus,
+          activeSponsorIds: [...team.activeSponsorIds, sponsor.id],
+          sponsorOffers: team.sponsorOffers.filter(o => o.id !== sponsor.id)
+        };
+      });
+      return { ...prev, teams: newTeams };
+    });
+  };
+
+  const handleRejectSponsor = (sponsorId: string) => {
+    setGameState(prev => {
+      const newTeams = prev.teams.map((team, i) => {
+        if (i !== prev.currentPlayerIndex) return team;
+        return {
+          ...team,
+          sponsorOffers: team.sponsorOffers.filter(o => o.id !== sponsorId)
+        };
+      });
+      return { ...prev, teams: newTeams };
+    });
+  };
+
+  const handleCancelSponsor = (sponsorId: string) => {
+    setGameState(prev => {
+      const newTeams = prev.teams.map((team, i) => {
+        if (i !== prev.currentPlayerIndex) return team;
+        return {
+          ...team,
+          activeSponsorIds: team.activeSponsorIds.filter(id => id !== sponsorId)
+        };
+      });
       return { ...prev, teams: newTeams };
     });
   };
@@ -308,10 +338,9 @@ const App: React.FC = () => {
           {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.5, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
           {activeTab === 'training' && <Training team={currentTeam} onTrainDriver={handleTrainDriver} />}
           {activeTab === 'economy' && <Economy team={currentTeam} stocks={gameState.stocks} onBuyStock={handleBuyStock} onSellStock={handleSellStock} />}
-          {/* Fix: onHireEngineer callback was using undefined variables 'team' and 't'. Corrected to map over teams. */}
           {activeTab === 'engineering' && <Engineering team={currentTeam} onHireEngineer={e => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - e.cost, engineers: [...t.engineers, e]} : t)}))} onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, engineers: t.engineers.filter(x => x !== id)} : t)}))} />}
           {activeTab === 'factory' && <Factory team={currentTeam} onUpgrade={(p, c) => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - c, car: {...t.car, [p]: t.car[p] + 1}} : t)}))} />}
-          {activeTab === 'sponsors' && <Sponsors team={currentTeam} onAcceptSponsor={handleAcceptSponsor} onRejectSponsor={() => {}} onCancelActive={() => {}} />}
+          {activeTab === 'sponsors' && <Sponsors team={currentTeam} onAcceptSponsor={handleAcceptSponsor} onRejectSponsor={handleRejectSponsor} onCancelActive={handleCancelSponsor} />}
           {activeTab === 'season' && (
              <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                <div className="flex justify-between items-end">
