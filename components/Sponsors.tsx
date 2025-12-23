@@ -2,7 +2,7 @@
 import React from 'react';
 import { TeamState, Sponsor } from '../types';
 import { AVAILABLE_SPONSORS } from '../constants';
-import { Coins, Check, X, TrendingUp, Target, Award, Mail, AlertCircle } from 'lucide-react';
+import { Coins, Check, X, TrendingUp, Target, Award, Mail, AlertCircle, Lock } from 'lucide-react';
 
 interface SponsorsProps {
   team: TeamState;
@@ -12,8 +12,11 @@ interface SponsorsProps {
 }
 
 const Sponsors: React.FC<SponsorsProps> = ({ team, onAcceptSponsor, onRejectSponsor, onCancelActive }) => {
-  const activeSponsors = AVAILABLE_SPONSORS.filter(s => team.activeSponsorIds.includes(s.id));
+  // Aseguramos unicidad de los IDs activos para evitar errores de conteo
+  const uniqueActiveIds = Array.from(new Set(team.activeSponsorIds));
+  const activeSponsors = AVAILABLE_SPONSORS.filter(s => uniqueActiveIds.includes(s.id));
   const offers = team.sponsorOffers;
+  const isAtLimit = activeSponsors.length >= 3;
 
   return (
     <div className="space-y-8 pb-20 animate-in fade-in duration-500">
@@ -22,8 +25,13 @@ const Sponsors: React.FC<SponsorsProps> = ({ team, onAcceptSponsor, onRejectSpon
           <h2 className="text-3xl font-f1 font-bold text-slate-100 flex items-center gap-3 italic">
             <Coins className="text-red-500" /> Commercial Dashboard
           </h2>
-          <p className="text-slate-400 font-medium italic">Sponsors send offers based on your team's reputation. Manage your active contracts below.</p>
+          <p className="text-slate-400 font-medium italic">Gestiona tus patrocinios. Los ingresos dependen de cumplir los objetivos de carrera.</p>
         </div>
+        {isAtLimit && (
+          <div className="bg-red-600/20 border border-red-600/40 px-6 py-2 rounded-xl flex items-center gap-3 text-red-500 font-black uppercase tracking-widest text-[10px]">
+            <Lock size={14} /> Cupo de Sponsors Lleno (3/3)
+          </div>
+        )}
       </header>
 
       {/* Active Contracts */}
@@ -44,7 +52,7 @@ const Sponsors: React.FC<SponsorsProps> = ({ team, onAcceptSponsor, onRejectSpon
                       <div className={`w-12 h-12 rounded-xl ${sponsor.logoColor} flex items-center justify-center text-white font-bold text-xl`}>
                         {sponsor.name.charAt(0)}
                       </div>
-                      <button onClick={() => onCancelActive(sponsor.id)} className="text-slate-600 hover:text-red-500">
+                      <button onClick={() => onCancelActive(sponsor.id)} className="text-slate-600 hover:text-red-500 transition-colors">
                         <X size={16} />
                       </button>
                     </div>
@@ -77,7 +85,7 @@ const Sponsors: React.FC<SponsorsProps> = ({ team, onAcceptSponsor, onRejectSpon
         {offers.length === 0 ? (
           <div className="bg-slate-900/40 border border-slate-800 rounded-3xl p-12 text-center flex flex-col items-center">
             <AlertCircle size={48} className="text-slate-700 mb-4" />
-            <p className="text-slate-500 italic font-medium">No new offers from sponsors at the moment. Keep racing to gain visibility.</p>
+            <p className="text-slate-500 italic font-medium">No hay ofertas nuevas. Sigue compitiendo para atraer marcas.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -111,16 +119,22 @@ const Sponsors: React.FC<SponsorsProps> = ({ team, onAcceptSponsor, onRejectSpon
 
                 <div className="flex gap-4">
                   <button
+                    disabled={isAtLimit}
                     onClick={() => onAcceptSponsor(offer)}
-                    className="flex-1 bg-white text-black py-4 rounded-xl font-bold text-xs hover:bg-red-600 hover:text-white transition-all shadow-lg flex items-center justify-center gap-2"
+                    className={`flex-1 py-4 rounded-xl font-bold text-xs transition-all shadow-lg flex items-center justify-center gap-2 ${
+                      isAtLimit 
+                      ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-50' 
+                      : 'bg-white text-black hover:bg-red-600 hover:text-white'
+                    }`}
                   >
-                    <Check size={16} /> ACCEPT DEAL
+                    {isAtLimit ? <Lock size={16} /> : <Check size={16} />} 
+                    {isAtLimit ? 'CUPO LLENO' : 'ACEPTAR CONTRATO'}
                   </button>
                   <button
                     onClick={() => onRejectSponsor(offer.id)}
                     className="px-6 border border-slate-800 text-slate-500 py-4 rounded-xl font-bold text-xs hover:bg-slate-800 hover:text-white transition-all"
                   >
-                    REJECT
+                    RECHAZAR
                   </button>
                 </div>
               </div>

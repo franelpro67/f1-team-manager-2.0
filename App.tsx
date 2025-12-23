@@ -49,7 +49,15 @@ const App: React.FC = () => {
   
   const [gameState, setGameState] = useState<GameState>(() => {
     const saved = localStorage.getItem('f1_tycoon_game_v4');
-    if (saved) return JSON.parse(saved);
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      // Limpieza de duplicados en carga para corregir partidas corruptas
+      parsed.teams = parsed.teams.map((t: TeamState) => ({
+        ...t,
+        activeSponsorIds: Array.from(new Set(t.activeSponsorIds))
+      }));
+      return parsed;
+    }
     return {
       mode: 'single',
       teams: [createInitialTeam(0, "Tu Escudería", "red", INITIAL_FUNDS)],
@@ -196,11 +204,14 @@ const App: React.FC = () => {
     setGameState(prev => {
       const newTeams = prev.teams.map((team, i) => {
         if (i !== prev.currentPlayerIndex) return team;
-        if (team.activeSponsorIds.length >= 3) return team;
+        // Evitar duplicados y respetar el límite de 3
+        const uniqueSponsors = Array.from(new Set(team.activeSponsorIds));
+        if (uniqueSponsors.length >= 3 || uniqueSponsors.includes(sponsor.id)) return team;
+        
         return {
           ...team,
           funds: team.funds + sponsor.signingBonus,
-          activeSponsorIds: [...team.activeSponsorIds, sponsor.id],
+          activeSponsorIds: [...uniqueSponsors, sponsor.id],
           sponsorOffers: team.sponsorOffers.filter(o => o.id !== sponsor.id)
         };
       });
