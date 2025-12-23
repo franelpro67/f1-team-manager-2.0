@@ -9,14 +9,17 @@ interface TrainingProps {
 }
 
 const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
-  // Función para calcular el coste dinámico basado en el stat actual
+  /**
+   * Calcula el coste dinámico con un incremento del 25% por punto.
+   * El umbral se ha bajado a 75 para que el jugador sienta el aumento de valor progresivo.
+   */
   const calculateCost = (baseCost: number, currentStat: number) => {
-    // Multiplicador: Los stats por encima de 80 son mucho más caros de mejorar (15% extra por punto)
-    const penaltyThreshold = 80;
+    const penaltyThreshold = 75; 
     if (currentStat <= penaltyThreshold) return baseCost;
     
     const extraPoints = currentStat - penaltyThreshold;
-    const multiplier = Math.pow(1.15, extraPoints); // 15% de incremento compuesto por punto
+    // INCREMENTO DEL 25% (1.25) por cada punto por encima del umbral
+    const multiplier = Math.pow(1.25, extraPoints); 
     return Math.round(baseCost * multiplier);
   };
 
@@ -24,6 +27,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
     if (stat >= 95) return { label: 'PERFECCIÓN', color: 'text-purple-400' };
     if (stat >= 90) return { label: 'NIVEL MAESTRO', color: 'text-orange-400' };
     if (stat >= 80) return { label: 'ALTO RENDIMIENTO', color: 'text-yellow-400' };
+    if (stat >= 75) return { label: 'ESPECIALIZACIÓN', color: 'text-cyan-400' };
     return { label: 'DESARROLLO BASE', color: 'text-green-400' };
   };
 
@@ -33,7 +37,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
       name: 'Simulador de Élite', 
       stat: 'pace', 
       gain: 2, 
-      baseCost: 4000000, // Reducido al 50% de 8M
+      baseCost: 4000000, // 50% más barato que el original de 8M
       icon: <Zap size={20} />, 
       color: 'text-red-500', 
       desc: 'Optimización de trazadas y puntos de frenada.' 
@@ -43,7 +47,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
       name: 'Neuro-Coaching', 
       stat: 'consistency', 
       gain: 3, 
-      baseCost: 3000000, // Reducido al 50% de 6M
+      baseCost: 3000000, // 50% más barato que el original de 6M
       icon: <ShieldCheck size={20} />, 
       color: 'text-blue-500', 
       desc: 'Control de estrés y reducción de errores en stint largo.' 
@@ -53,7 +57,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
       name: 'Masterclass Técnica', 
       stat: 'experience', 
       gain: 5, 
-      baseCost: 2000000, // Reducido al 50% de 4M
+      baseCost: 2000000, // 50% más barato que el original de 4M
       icon: <TrendingUp size={20} />, 
       color: 'text-green-500', 
       desc: 'Gestión avanzada de neumáticos y ahorro de combustible.' 
@@ -65,17 +69,19 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
       <div className="flex justify-between items-end">
         <div>
           <h2 className="text-4xl font-f1 font-bold text-slate-100 italic tracking-tighter uppercase flex items-center gap-4">
-            <Dumbbell className="text-red-600" size={40} /> Driver Performance Center
+            <Dumbbell className="text-red-600" size={40} /> Performance Center
           </h2>
           <p className="text-slate-400 font-medium italic mt-2">
-            La excelencia tiene un precio. Mejorar pilotos de élite requiere inversiones masivas.
+            Costes base reducidos un 50%. La inversión aumenta un 25% por cada punto de mejora.
           </p>
         </div>
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl hidden md:block">
            <div className="flex items-center gap-2 text-yellow-500 text-[10px] font-black uppercase tracking-widest mb-1">
-             <AlertTriangle size={12} /> Aviso de Box
+             <AlertTriangle size={12} /> Curva de Aprendizaje
            </div>
-           <p className="text-[10px] text-slate-500 max-w-[200px]">Los costes aumentan drásticamente cuando un stat supera los 80 puntos.</p>
+           <p className="text-[10px] text-slate-500 max-w-[200px]">
+             Superar los 75 puntos aplica un multiplicador exponencial del 1.25x por punto.
+           </p>
         </div>
       </div>
 
@@ -89,7 +95,6 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
             <div key={driver.id} className="bg-slate-900/60 border border-slate-800 rounded-[3rem] p-10 flex flex-col lg:flex-row gap-10 shadow-2xl relative overflow-hidden group">
               <div className="absolute top-0 left-0 w-2 h-full bg-red-600 opacity-50"></div>
               
-              {/* Info Piloto */}
               <div className="lg:w-1/3 space-y-6">
                 <div className="flex items-center gap-6">
                   <div className="relative">
@@ -115,7 +120,6 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
                 </div>
               </div>
 
-              {/* Programas con Costes Dinámicos */}
               <div className="flex-1 grid grid-cols-1 md:grid-cols-3 gap-6">
                 {TRAINING_PROGRAMS.map((prog) => {
                   const currentVal = driver[prog.stat as keyof Driver] as number;
@@ -161,7 +165,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
                             : 'bg-white text-black hover:bg-red-600 hover:text-white shadow-lg group-hover/card:scale-[1.02]'
                           }`}
                         >
-                          {isMaxed ? 'CAPACIDAD MÁXIMA' : 'EJECUTAR MEJORA'}
+                          {isMaxed ? 'MÁXIMO NIVEL' : 'MEJORAR PILOTO'}
                         </button>
                       </div>
                     </div>

@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { TeamState, Stock, Investment } from '../types';
-import { TrendingUp, TrendingDown, Wallet, BarChart3, ArrowUpRight, ArrowDownRight, Info, DollarSign } from 'lucide-react';
+import { TrendingUp, TrendingDown, Wallet, BarChart3, ArrowUpRight, ArrowDownRight, Info, DollarSign, ShoppingCart } from 'lucide-react';
 
 interface EconomyProps {
   team: TeamState;
@@ -69,7 +69,11 @@ const Economy: React.FC<EconomyProps> = ({ team, stocks, onBuyStock, onSellStock
           const inv = getInvestment(stock.id);
           const shares = inv?.shares || 0;
           const currentVal = shares * stock.price;
-          const canBuy = team.funds >= stock.price * 10;
+          
+          const canBuy10 = team.funds >= stock.price * 10;
+          const canBuy100 = team.funds >= stock.price * 100;
+          const canBuy1000 = team.funds >= stock.price * 1000;
+          
           const profit = shares > 0 ? (currentVal - inv!.totalInvested) : 0;
 
           return (
@@ -91,12 +95,12 @@ const Economy: React.FC<EconomyProps> = ({ team, stocks, onBuyStock, onSellStock
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-6 mt-8">
+              <div className="flex flex-col md:flex-row gap-6 mt-8">
                  {/* Panel de Usuario */}
-                 <div className="bg-slate-950/50 rounded-2xl p-5 border border-slate-800/50">
+                 <div className="flex-1 bg-slate-950/50 rounded-2xl p-5 border border-slate-800/50 flex flex-col justify-center">
                     <p className="text-[10px] text-slate-600 font-black uppercase tracking-widest mb-3">Tus Acciones</p>
                     <div className="flex justify-between items-end">
-                       <span className="text-2xl font-f1 font-bold text-white">{shares}</span>
+                       <span className="text-3xl font-f1 font-bold text-white">{shares}</span>
                        <span className={`text-[10px] font-bold ${profit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                          {profit >= 0 ? '+' : ''}${profit.toFixed(0)}
                        </span>
@@ -104,21 +108,39 @@ const Economy: React.FC<EconomyProps> = ({ team, stocks, onBuyStock, onSellStock
                  </div>
 
                  {/* Botones de Acción */}
-                 <div className="flex flex-col gap-3">
+                 <div className="flex-1 grid grid-cols-2 gap-2">
                     <button 
                       onClick={() => onBuyStock(stock.id, 10, stock.price)}
-                      disabled={!canBuy}
-                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                        canBuy ? 'bg-white text-black hover:bg-green-500 hover:text-white' : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                      disabled={!canBuy10}
+                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border ${
+                        canBuy10 ? 'bg-white text-black border-white hover:bg-green-500 hover:text-white hover:border-green-500' : 'bg-slate-800 text-slate-600 border-slate-800 cursor-not-allowed'
                       }`}
                     >
                       Comprar x10
                     </button>
                     <button 
+                      onClick={() => onBuyStock(stock.id, 100, stock.price)}
+                      disabled={!canBuy100}
+                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border ${
+                        canBuy100 ? 'bg-white text-black border-white hover:bg-green-500 hover:text-white hover:border-green-500' : 'bg-slate-800 text-slate-600 border-slate-800 cursor-not-allowed'
+                      }`}
+                    >
+                      Comprar x100
+                    </button>
+                    <button 
+                      onClick={() => onBuyStock(stock.id, 1000, stock.price)}
+                      disabled={!canBuy1000}
+                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border ${
+                        canBuy1000 ? 'bg-white text-black border-white hover:bg-green-500 hover:text-white hover:border-green-500' : 'bg-slate-800 text-slate-600 border-slate-800 cursor-not-allowed'
+                      }`}
+                    >
+                      Comprar x1000
+                    </button>
+                    <button 
                       onClick={() => onSellStock(stock.id, shares, stock.price)}
                       disabled={shares <= 0}
-                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                        shares > 0 ? 'bg-slate-800 text-white hover:bg-red-600' : 'bg-slate-800 text-slate-600 cursor-not-allowed'
+                      className={`py-3 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all border ${
+                        shares > 0 ? 'bg-slate-800 text-white border-slate-700 hover:bg-red-600 hover:border-red-600' : 'bg-slate-800 text-slate-600 border-slate-800 cursor-not-allowed'
                       }`}
                     >
                       Vender Todo
@@ -133,7 +155,7 @@ const Economy: React.FC<EconomyProps> = ({ team, stocks, onBuyStock, onSellStock
       <div className="mt-12 p-6 bg-slate-900/40 rounded-3xl border border-slate-800 flex items-start gap-4">
         <Info className="text-blue-500 shrink-0" size={24} />
         <p className="text-xs text-slate-500 leading-relaxed">
-          <strong>Aviso de Riesgo:</strong> El valor de tus inversiones puede fluctuar drásticamente después de cada Gran Premio. Las empresas de alta volatilidad (como Cripto) ofrecen retornos masivos pero pueden perder gran parte de su valor en una sola ronda. Diversifica tu cartera para asegurar el futuro de tu escudería.
+          <strong>Estrategia de Mercado:</strong> Ahora puedes realizar adquisiciones a gran escala (x100 y x1000) para capitalizar rápidamente los movimientos del mercado. Recuerda que el valor de tus inversiones se actualiza tras cada Gran Premio basándose en el rendimiento global de las empresas.
         </p>
       </div>
     </div>
