@@ -38,6 +38,7 @@ export const RIVAL_TEAMS = [
 ];
 
 export const AVAILABLE_DRIVERS: Driver[] = [
+  { id: 'd-fangio', name: 'Juan Manuel Fangio', age: 46, nationality: 'Argentina', pace: 97, consistency: 99, marketability: 95, experience: 99, salary: 18000000, cost: 52000000, image: 'https://media.formula1.com/content/dam/fom-website/manual/History/Juan-Manuel-Fangio/Fangio_Hall_of_Fame_Portrait.jpg' },
   { id: 'd-senna', name: 'Ayrton Senna', age: 34, nationality: 'Brazil', pace: 99, consistency: 92, marketability: 100, experience: 95, salary: 20000000, cost: 55000000, image: 'https://media.formula1.com/content/dam/fom-website/manual/History/Ayrton-Senna/Ayrton_Senna_Hall_of_Fame_Portrait.jpg' },
   { id: 'd-schumacher', name: 'Michael Schumacher', age: 35, nationality: 'Germany', pace: 98, consistency: 99, marketability: 100, experience: 99, salary: 20000000, cost: 55000000, image: 'https://media.formula1.com/content/dam/fom-website/manual/History/Michael-Schumacher/Schumacher_Hall_of_Fame_Portrait.jpg' },
   { id: 'd-lauda', name: 'Niki Lauda', age: 35, nationality: 'Austria', pace: 94, consistency: 98, marketability: 95, experience: 99, salary: 15000000, cost: 40000000, image: 'https://media.formula1.com/content/dam/fom-website/manual/History/Niki-Lauda/Lauda_Hall_of_Fame_Portrait.jpg' },
