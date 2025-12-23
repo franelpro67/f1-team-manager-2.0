@@ -13,15 +13,34 @@ import SeasonFinale from './components/SeasonFinale.tsx';
 import Tutorial from './components/Tutorial.tsx';
 import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment } from './types.ts';
 import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS, INITIAL_STOCKS } from './constants.tsx';
-import { Users, User, Globe, Search, Send, Play, Star } from 'lucide-react';
+import { Users, User, Globe, Search, Send, Play, Star, Shield } from 'lucide-react';
 import * as OnlineService from './services/onlineService.ts';
 
 const MAX_RACES_PER_SEASON = 10;
 const SAVE_KEY = 'f1_tycoon_persistent_v1';
 
 /**
- * Genera sponsors aleatorios evitando los IDs proporcionados en excludeIds
+ * Logo de Escudería Profesional: Un escudo dinámico que representa velocidad y prestigio.
  */
+export const TeamManagerLogo = ({ className }: { className?: string }) => (
+  <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <linearGradient id="shieldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" style={{ stopColor: 'currentColor', stopOpacity: 1 }} />
+        <stop offset="100%" style={{ stopColor: 'currentColor', stopOpacity: 0.6 }} />
+      </linearGradient>
+    </defs>
+    {/* Forma del Escudo Principal */}
+    <path d="M50 5 L85 20 V45 C85 70 50 95 50 95 C50 95 15 70 15 45 V20 L50 5Z" fill="url(#shieldGrad)" />
+    {/* Líneas de Velocidad / Flujo Aero */}
+    <path d="M30 30 L70 30 M25 45 L75 45 M35 60 L65 60" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.3" />
+    {/* Patrón de Bandera a Cuadros Interno */}
+    <path d="M40 25 H50 V35 H40 V25ZM50 35 H60 V45 H50 V35ZM40 45 H50 V55 H40 V45Z" fill="white" opacity="0.8" />
+    {/* Borde de Refuerzo */}
+    <path d="M50 8 L82 22 V45 C82 68 50 90 50 90 C50 90 18 68 18 45 V22 L50 8Z" stroke="white" strokeWidth="2" opacity="0.5" />
+  </svg>
+);
+
 const getRandomSponsors = (count: number, excludeIds: string[] = []): Sponsor[] => {
   const available = AVAILABLE_SPONSORS.filter(s => !excludeIds.includes(s.id));
   const shuffled = [...available].sort(() => 0.5 - Math.random());
@@ -53,13 +72,11 @@ const App: React.FC = () => {
   const [manualCode, setManualCode] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
   
-  // Inicialización robusta desde LocalStorage
   const [gameState, setGameState] = useState<GameState>(() => {
     const saved = localStorage.getItem(SAVE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Limpieza básica de datos para evitar inconsistencias tras actualizaciones
         parsed.teams = parsed.teams.map((t: TeamState) => ({
           ...t,
           activeSponsorIds: Array.from(new Set(t.activeSponsorIds || []))
@@ -79,10 +96,8 @@ const App: React.FC = () => {
     };
   });
 
-  // Selector de modo dinámico basado en si ya existe una partida
   const [showModeSelector, setShowModeSelector] = useState(() => !localStorage.getItem(SAVE_KEY));
 
-  // AUTO-SAVE: Se dispara cada vez que cambia el estado del juego
   useEffect(() => {
     if (!showModeSelector) {
       localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
@@ -95,7 +110,6 @@ const App: React.FC = () => {
 
   const driverStandings = useMemo(() => {
     const standings: Record<string, { name: string, team: string, points: number }> = {};
-    
     gameState.seasonHistory.forEach(race => {
       race.fullClassification.forEach((entry: TeamResult) => {
         if (!standings[entry.driverName]) {
@@ -104,7 +118,6 @@ const App: React.FC = () => {
         standings[entry.driverName].points += entry.points || 0;
       });
     });
-
     return Object.values(standings).sort((a, b) => b.points - a.points);
   }, [gameState.seasonHistory]);
 
@@ -135,23 +148,19 @@ const App: React.FC = () => {
 
   const handleFinishRace = async (result: RaceResult) => {
     setIsRacing(false);
-    
     setGameState(prev => {
       const updatedStocks = prev.stocks.map(stock => {
         const changePercent = (Math.random() - 0.5) * 2 * stock.volatility;
         const newPrice = Math.max(10, Math.round(stock.price * (1 + changePercent)));
         return { ...stock, price: newPrice, trend: changePercent * 100 };
       });
-
       const updatedTeams = prev.teams.map(team => {
         const teamRes = result.teamResults.find(r => r.teamId === team.id);
         const bestPos = teamRes ? Math.min(teamRes.driver1Position, teamRes.driver2Position) : 20;
         const activeSponsors = AVAILABLE_SPONSORS.filter(s => team.activeSponsorIds.includes(s.id));
         const sponsorPayout = activeSponsors.reduce((sum, s) => bestPos <= s.targetPosition ? sum + s.payoutPerRace : sum, 0);
-        
         const excludedIds = [...team.activeSponsorIds, ...team.sponsorOffers.map(o => o.id)];
         const newOffers = getRandomSponsors(1, excludedIds);
-        
         return {
           ...team,
           funds: team.funds + (21 - bestPos) * 300000 + sponsorPayout + 2000000,
@@ -160,7 +169,6 @@ const App: React.FC = () => {
           currentStrategy: undefined 
         };
       });
-
       return {
         ...prev,
         stocks: updatedStocks,
@@ -170,7 +178,6 @@ const App: React.FC = () => {
         currentPlayerIndex: 0
       };
     });
-
     if (gameState.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON) {
       setTimeout(() => setShowSeasonFinale(true), 2000);
     } else {
@@ -179,11 +186,7 @@ const App: React.FC = () => {
   };
 
   const handleRestartSeason = () => {
-    setGameState(prev => ({
-      ...prev,
-      currentRaceIndex: 0,
-      seasonHistory: []
-    }));
+    setGameState(prev => ({ ...prev, currentRaceIndex: 0, seasonHistory: [] }));
     setShowSeasonFinale(false);
     setActiveTab('dashboard');
   };
@@ -231,7 +234,6 @@ const App: React.FC = () => {
         if (i !== prev.currentPlayerIndex) return team;
         const uniqueSponsors = Array.from(new Set(team.activeSponsorIds));
         if (uniqueSponsors.length >= 3 || uniqueSponsors.includes(sponsor.id)) return team;
-        
         return {
           ...team,
           funds: team.funds + sponsor.signingBonus,
@@ -247,10 +249,7 @@ const App: React.FC = () => {
     setGameState(prev => {
       const newTeams = prev.teams.map((team, i) => {
         if (i !== prev.currentPlayerIndex) return team;
-        return {
-          ...team,
-          sponsorOffers: team.sponsorOffers.filter(o => o.id !== sponsorId)
-        };
+        return { ...team, sponsorOffers: team.sponsorOffers.filter(o => o.id !== sponsorId) };
       });
       return { ...prev, teams: newTeams };
     });
@@ -260,10 +259,7 @@ const App: React.FC = () => {
     setGameState(prev => {
       const newTeams = prev.teams.map((team, i) => {
         if (i !== prev.currentPlayerIndex) return team;
-        return {
-          ...team,
-          activeSponsorIds: team.activeSponsorIds.filter(id => id !== sponsorId)
-        };
+        return { ...team, activeSponsorIds: team.activeSponsorIds.filter(id => id !== sponsorId) };
       });
       return { ...prev, teams: newTeams };
     });
@@ -294,12 +290,13 @@ const App: React.FC = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/95 via-blue-900/10 to-slate-950/95" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.9)_100%)]" />
-        <div className="relative z-10 text-center space-y-16 max-w-7xl w-full">
-          <div className="space-y-4 animate-in fade-in slide-in-from-top-12 duration-1000">
+        <div className="relative z-10 text-center space-y-12 max-w-7xl w-full">
+          <div className="space-y-4 animate-in fade-in slide-in-from-top-12 duration-1000 flex flex-col items-center">
+            <TeamManagerLogo className="w-48 text-red-600 drop-shadow-[0_0_30px_rgba(220,38,38,0.5)] mb-6 animate-in zoom-in duration-700" />
             <h1 className="text-8xl md:text-9xl font-f1 font-bold text-red-600 italic tracking-tighter drop-shadow-[0_0_80px_rgba(220,38,38,0.8)]">F1 TYCOON</h1>
             <div className="flex items-center justify-center gap-6">
               <div className="h-0.5 w-24 bg-gradient-to-r from-transparent to-red-600"></div>
-              <p className="text-slate-100 font-black uppercase tracking-[1em] text-[10px] md:text-xs">THE BEST F1 TEAM MANAGER</p>
+              <p className="text-slate-100 font-black uppercase tracking-[1em] text-[10px] md:text-xs">ELITE RACING MANAGEMENT</p>
               <div className="h-0.5 w-24 bg-gradient-to-l from-transparent to-red-600"></div>
             </div>
           </div>
@@ -408,7 +405,6 @@ const App: React.FC = () => {
                           const isYourDriver = currentTeam.drivers.some(td => td.name === d.name);
                           const accentClass = currentTeam.color === 'cyan' ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-red-600/30 bg-red-600/5';
                           const badgeClass = currentTeam.color === 'cyan' ? 'bg-cyan-500 text-white' : 'bg-red-600 text-white';
-
                           return (
                             <tr key={d.name} className={`hover:bg-slate-800/20 transition-colors ${isYourDriver ? `${accentClass} relative` : i < 3 ? 'bg-slate-800/10' : ''}`}>
                               <td className="px-10 py-6 font-f1 text-lg"><span className={i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-500' : 'text-slate-500'}>{i + 1}</span></td>

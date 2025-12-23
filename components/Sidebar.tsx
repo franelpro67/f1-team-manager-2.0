@@ -1,6 +1,7 @@
 
 import React, { useState } from 'react';
 import { LayoutDashboard, Users, Wrench, Trophy, Info, Briefcase, Coins, RotateCcw, Save, CheckCircle, Dumbbell, TrendingUp, HelpCircle } from 'lucide-react';
+import { TeamManagerLogo } from '../App.tsx';
 
 interface SidebarProps {
   activeTab: string;
@@ -37,11 +38,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers
 
   return (
     <div className="w-64 bg-slate-900 border-r border-slate-800 h-screen flex flex-col fixed left-0 top-0 z-50">
-      <div className="p-6 border-b border-slate-800">
-        <h1 className={`text-2xl font-f1 font-bold ${logoClass} tracking-tighter italic text-center transition-colors duration-500`}>F1 TYCOON</h1>
+      <div className="p-8 border-b border-slate-800 flex flex-col items-center gap-2 group cursor-default">
+        <TeamManagerLogo className={`w-16 ${logoClass} transition-all duration-700 group-hover:rotate-[10deg] drop-shadow-[0_0_15px_rgba(239,68,68,0.2)]`} />
+        <h1 className={`text-xl font-f1 font-bold ${logoClass} tracking-tighter italic text-center transition-colors duration-500 mt-4`}>F1 TYCOON</h1>
+        <span className="text-[8px] font-black text-slate-600 uppercase tracking-[0.4em]">Official Manager</span>
       </div>
       
-      <nav className="flex-1 mt-4 px-3 space-y-1">
+      <nav className="flex-1 mt-4 px-3 space-y-1 overflow-y-auto">
         {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeTab === item.id;
@@ -51,13 +54,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-all ${
                 isActive 
-                  ? `${accentClass} text-white shadow-lg` 
+                  ? `${accentClass} text-white shadow-lg scale-[1.02]` 
                   : 'text-slate-400 hover:bg-slate-800 hover:text-slate-100'
               }`}
             >
               <div className="flex items-center space-x-3">
-                <Icon size={20} />
-                <span className="font-semibold text-sm">{item.label}</span>
+                <Icon size={18} />
+                <span className="font-semibold text-xs uppercase tracking-wider">{item.label}</span>
               </div>
               {item.notify && !isActive && (
                 <div className={`w-2 h-2 rounded-full animate-pulse shadow-[0_0_8px_rgba(239,68,68,1)] ${teamColor === 'cyan' ? 'bg-cyan-400' : 'bg-red-500'}`} />
@@ -67,17 +70,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers
         })}
       </nav>
 
-      <div className="p-4 space-y-2 border-t border-slate-800">
+      <div className="p-4 space-y-2 border-t border-slate-800 bg-slate-900/50">
         <button
           onClick={onOpenTutorial}
-          className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-all text-sm font-semibold"
+          className="w-full flex items-center space-x-3 px-4 py-2.5 rounded-lg text-slate-300 hover:bg-slate-800 transition-all text-xs font-semibold uppercase tracking-wider"
         >
           <HelpCircle size={16} className="text-blue-400" />
-          <span>Cómo Jugar</span>
+          <span>Ayuda</span>
         </button>
         <button
           onClick={handleManualSave}
-          className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
+          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-lg text-xs font-semibold transition-all uppercase tracking-wider ${
             savedStatus 
             ? 'bg-green-600/20 text-green-500' 
             : 'text-slate-300 hover:bg-slate-800'
@@ -85,15 +88,15 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers
         >
           <div className="flex items-center space-x-3">
             {savedStatus ? <CheckCircle size={16} /> : <Save size={16} />}
-            <span>{savedStatus ? 'Guardado' : 'Guardar'}</span>
+            <span>{savedStatus ? 'OK' : 'Guardar'}</span>
           </div>
         </button>
         <button
           onClick={onReset}
-          className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/20 transition-all text-sm font-semibold"
+          className="w-full flex items-center space-x-3 px-4 py-2 rounded-lg text-slate-500 hover:text-red-400 hover:bg-red-950/20 transition-all text-[10px] font-black uppercase tracking-widest"
         >
-          <RotateCcw size={16} />
-          <span>Reset Game</span>
+          <RotateCcw size={14} />
+          <span>Reset</span>
         </button>
       </div>
     </div>
