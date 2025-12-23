@@ -1,16 +1,18 @@
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import Sidebar from './components/Sidebar';
-import Dashboard from './components/Dashboard';
-import Market from './components/Market';
-import Factory from './components/Factory';
-import Engineering from './components/Engineering';
-import Sponsors from './components/Sponsors';
-import RaceSimulation from './components/RaceSimulation';
-import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy } from './types';
-import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS } from './constants';
+import Sidebar from './components/Sidebar.tsx';
+import Dashboard from './components/Dashboard.tsx';
+import Market from './components/Market.tsx';
+import Factory from './components/Factory.tsx';
+import Engineering from './components/Engineering.tsx';
+import Training from './components/Training.tsx';
+import Economy from './components/Economy.tsx';
+import Sponsors from './components/Sponsors.tsx';
+import RaceSimulation from './components/RaceSimulation.tsx';
+import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment } from './types.ts';
+import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS, INITIAL_STOCKS } from './constants.tsx';
 import { Users, User, Globe, Search, Send, Play } from 'lucide-react';
-import * as OnlineService from './services/onlineService';
+import * as OnlineService from './services/onlineService.ts';
 
 const getRandomSponsors = (count: number): Sponsor[] => {
   const shuffled = [...AVAILABLE_SPONSORS].sort(() => 0.5 - Math.random());
@@ -28,7 +30,8 @@ const createInitialTeam = (id: number, name: string, color: string, funds: numbe
   sponsorOffers: getRandomSponsors(2),
   engineers: [],
   car: { aerodynamics: 1, powerUnit: 1, chassis: 1, reliability: 1 },
-  color
+  color,
+  investments: []
 });
 
 const App: React.FC = () => {
@@ -45,10 +48,11 @@ const App: React.FC = () => {
     if (saved) return JSON.parse(saved);
     return {
       mode: 'single',
-      teams: [createInitialTeam(0, "Player 1 Team", "red", INITIAL_FUNDS)],
+      teams: [createInitialTeam(0, "Tu Escudería", "red", INITIAL_FUNDS)],
       currentPlayerIndex: 0,
       currentRaceIndex: 0,
-      seasonHistory: []
+      seasonHistory: [],
+      stocks: INITIAL_STOCKS
     };
   });
 
@@ -80,7 +84,7 @@ const App: React.FC = () => {
         ? [createInitialTeam(0, "Tu Escudería", "red", funds)]
         : [createInitialTeam(0, "Player 1", "red", funds), createInitialTeam(1, "Player 2", "cyan", funds)];
       
-      const newState: GameState = { mode, teams, currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [] };
+      const newState: GameState = { mode, teams, currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [], stocks: INITIAL_STOCKS };
       setGameState(newState);
       setShowModeSelector(false);
     }
@@ -96,29 +100,109 @@ const App: React.FC = () => {
 
   const handleFinishRace = async (result: RaceResult) => {
     setIsRacing(false);
-    const updatedState = { ...gameState };
     
-    updatedState.teams = updatedState.teams.map(team => {
-      const teamRes = result.teamResults.find(r => r.teamId === team.id);
-      const bestPos = teamRes ? Math.min(teamRes.driver1Position, teamRes.driver2Position) : 20;
-      const activeSponsors = AVAILABLE_SPONSORS.filter(s => team.activeSponsorIds.includes(s.id));
-      const sponsorPayout = activeSponsors.reduce((sum, s) => bestPos <= s.targetPosition ? sum + s.payoutPerRace : sum, 0);
-      
+    setGameState(prev => {
+      // 1. Actualizar la bolsa (Bolsa global)
+      const updatedStocks = prev.stocks.map(stock => {
+        const changePercent = (Math.random() - 0.5) * 2 * stock.volatility;
+        const newPrice = Math.max(10, Math.round(stock.price * (1 + changePercent)));
+        return {
+          ...stock,
+          price: newPrice,
+          trend: changePercent * 100
+        };
+      });
+
+      // 2. Actualizar equipos
+      const updatedTeams = prev.teams.map(team => {
+        const teamRes = result.teamResults.find(r => r.teamId === team.id);
+        const bestPos = teamRes ? Math.min(teamRes.driver1Position, teamRes.driver2Position) : 20;
+        const activeSponsors = AVAILABLE_SPONSORS.filter(s => team.activeSponsorIds.includes(s.id));
+        const sponsorPayout = activeSponsors.reduce((sum, s) => bestPos <= s.targetPosition ? sum + s.payoutPerRace : sum, 0);
+        
+        return {
+          ...team,
+          funds: team.funds + (21 - bestPos) * 300000 + sponsorPayout + 2000000,
+          reputation: Math.min(100, team.reputation + Math.max(0, 10 - bestPos)),
+          sponsorOffers: [...team.sponsorOffers, ...getRandomSponsors(1)].slice(0, 4),
+          currentStrategy: undefined 
+        };
+      });
+
       return {
-        ...team,
-        funds: team.funds + (21 - bestPos) * 300000 + sponsorPayout + 2000000,
-        reputation: Math.min(100, team.reputation + Math.max(0, 10 - bestPos)),
-        sponsorOffers: [...team.sponsorOffers, ...getRandomSponsors(1)].slice(0, 4),
-        currentStrategy: undefined // Reset strategy for next race
+        ...prev,
+        stocks: updatedStocks,
+        teams: updatedTeams,
+        seasonHistory: [...prev.seasonHistory, result],
+        currentRaceIndex: prev.currentRaceIndex + 1,
+        currentPlayerIndex: 0
       };
     });
 
-    updatedState.seasonHistory = [...updatedState.seasonHistory, result];
-    updatedState.currentRaceIndex += 1;
-    updatedState.currentPlayerIndex = 0;
-
-    setGameState(updatedState);
     setActiveTab('season');
+  };
+
+  const handleBuyStock = (stockId: string, quantity: number, price: number) => {
+    setGameState(prev => {
+      const newTeams = [...prev.teams];
+      const team = newTeams[prev.currentPlayerIndex];
+      const cost = quantity * price;
+      
+      if (team.funds < cost) return prev;
+
+      const updatedInvestments = [...team.investments];
+      const invIndex = updatedInvestments.findIndex(i => i.stockId === stockId);
+
+      if (invIndex >= 0) {
+        updatedInvestments[invIndex] = {
+          ...updatedInvestments[invIndex],
+          shares: updatedInvestments[invIndex].shares + quantity,
+          totalInvested: updatedInvestments[invIndex].totalInvested + cost
+        };
+      } else {
+        updatedInvestments.push({ stockId, shares: quantity, totalInvested: cost });
+      }
+
+      newTeams[prev.currentPlayerIndex] = {
+        ...team,
+        funds: team.funds - cost,
+        investments: updatedInvestments
+      };
+
+      return { ...prev, teams: newTeams };
+    });
+  };
+
+  const handleSellStock = (stockId: string, quantity: number, price: number) => {
+    setGameState(prev => {
+      const newTeams = [...prev.teams];
+      const team = newTeams[prev.currentPlayerIndex];
+      const updatedInvestments = [...team.investments];
+      const invIndex = updatedInvestments.findIndex(i => i.stockId === stockId);
+
+      if (invIndex === -1 || updatedInvestments[invIndex].shares < quantity) return prev;
+
+      const revenue = quantity * price;
+      const inv = updatedInvestments[invIndex];
+      
+      if (inv.shares === quantity) {
+        updatedInvestments.splice(invIndex, 1);
+      } else {
+        updatedInvestments[invIndex] = {
+          ...inv,
+          shares: inv.shares - quantity,
+          totalInvested: inv.totalInvested * ((inv.shares - quantity) / inv.shares)
+        };
+      }
+
+      newTeams[prev.currentPlayerIndex] = {
+        ...team,
+        funds: team.funds + revenue,
+        investments: updatedInvestments
+      };
+
+      return { ...prev, teams: newTeams };
+    });
   };
 
   const handleAcceptSponsor = (sponsor: Sponsor) => {
@@ -136,19 +220,42 @@ const App: React.FC = () => {
     });
   };
 
+  const handleTrainDriver = (driverId: string, stat: 'pace' | 'consistency' | 'experience', cost: number) => {
+    setGameState(prev => {
+      const newTeams = [...prev.teams];
+      const team = newTeams[prev.currentPlayerIndex];
+      const driverIndex = team.drivers.findIndex(d => d.id === driverId);
+      if (driverIndex === -1 || team.funds < cost) return prev;
+
+      const updatedDrivers = [...team.drivers];
+      const gain = stat === 'experience' ? 5 : stat === 'consistency' ? 3 : 2;
+      
+      updatedDrivers[driverIndex] = {
+        ...updatedDrivers[driverIndex],
+        [stat]: Math.min(99, updatedDrivers[driverIndex][stat] + gain)
+      };
+
+      newTeams[prev.currentPlayerIndex] = {
+        ...team,
+        funds: team.funds - cost,
+        drivers: updatedDrivers
+      };
+
+      return { ...prev, teams: newTeams };
+    });
+  };
+
   const currentTeam = gameState.teams[gameState.currentPlayerIndex];
 
   if (showModeSelector) {
     return (
       <div className="min-h-screen relative flex flex-col items-center justify-center p-8 overflow-hidden bg-slate-950">
-        {/* Cinematic Background Image (Alpine F1 Team Car) */}
         <div 
           className="absolute inset-0 bg-cover bg-center transition-transform duration-[40s] scale-110 animate-[pulse_10s_ease-in-out_infinite]"
           style={{ 
             backgroundImage: `url('https://images.unsplash.com/photo-1647891941746-fe1d57dadc97?auto=format&fit=crop&q=80&w=2070')`,
           }}
         />
-        {/* Cinematic Dynamic Overlays with Alpine-inspired Cyan/Blue tint */}
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/95 via-blue-900/10 to-slate-950/95" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.9)_100%)]" />
         
@@ -188,7 +295,7 @@ const App: React.FC = () => {
                         setIsSearching(true);
                         const remote = await OnlineService.fetchGameState(manualCode.toUpperCase());
                         if (remote) {
-                          setGameState({ mode: 'online', roomCode: manualCode.toUpperCase(), isHost: false, teams: remote.teams, currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [] });
+                          setGameState({ mode: 'online', roomCode: manualCode.toUpperCase(), isHost: false, teams: remote.teams, currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [], stocks: INITIAL_STOCKS });
                           setIsSearching(false);
                           setShowModeSelector(false);
                         } else {
@@ -229,6 +336,8 @@ const App: React.FC = () => {
             />
           )}
           {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.5, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
+          {activeTab === 'training' && <Training team={currentTeam} onTrainDriver={handleTrainDriver} />}
+          {activeTab === 'economy' && <Economy team={currentTeam} stocks={gameState.stocks} onBuyStock={handleBuyStock} onSellStock={handleSellStock} />}
           {activeTab === 'engineering' && <Engineering team={currentTeam} onHireEngineer={e => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - e.cost, engineers: [...t.engineers, e]} : t)}))} onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, engineers: t.engineers.filter(x => x.id !== id)} : t)}))} />}
           {activeTab === 'factory' && <Factory team={currentTeam} onUpgrade={(p, c) => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - c, car: {...t.car, [p]: t.car[p] + 1}} : t)}))} />}
           {activeTab === 'sponsors' && <Sponsors team={currentTeam} onAcceptSponsor={handleAcceptSponsor} onRejectSponsor={() => {}} onCancelActive={() => {}} />}
@@ -273,9 +382,6 @@ const App: React.FC = () => {
                         ))}
                       </tbody>
                     </table>
-                    {driverStandings.length === 0 && (
-                      <div className="py-32 text-center opacity-30"><Play size={64} className="mx-auto mb-4" /><p className="font-bold uppercase tracking-widest">Sin datos de carrera</p></div>
-                    )}
                  </div>
                ) : (
                  <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">

@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, Wrench, Trophy, Info, Briefcase, Coins, RotateCcw, Save, CheckCircle } from 'lucide-react';
+import { LayoutDashboard, Users, Wrench, Trophy, Info, Briefcase, Coins, RotateCcw, Save, CheckCircle, Dumbbell, TrendingUp } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -17,7 +17,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers
   const menuItems = [
     { id: 'dashboard', label: 'HQ Dashboard', icon: LayoutDashboard },
     { id: 'market', label: 'Driver Market', icon: Users },
+    { id: 'training', label: 'Entrenamiento', icon: Dumbbell },
     { id: 'engineering', label: 'Dpto. Técnico', icon: Briefcase },
+    { id: 'economy', label: 'Economía', icon: TrendingUp },
     { id: 'sponsors', label: 'Sponsors', icon: Coins, notify: hasNewOffers },
     { id: 'factory', label: 'R&D Factory', icon: Wrench },
     { id: 'season', label: 'Season Stats', icon: Trophy },
@@ -75,7 +77,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers
         >
           <div className="flex items-center space-x-3">
             {savedStatus ? <CheckCircle size={16} /> : <Save size={16} />}
-            <span>{savedStatus ? 'Guardado' : 'Guardar Progreso'}</span>
+            <span>{savedStatus ? 'Guardado' : 'Guardar'}</span>
           </div>
         </button>
         <button

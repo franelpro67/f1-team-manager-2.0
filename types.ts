@@ -35,6 +35,22 @@ export interface Sponsor {
   expiresInRaces?: number;
 }
 
+export interface Stock {
+  id: string;
+  name: string;
+  symbol: string;
+  price: number;
+  volatility: number; // 0 a 1
+  trend: number; // Cambio porcentual último
+  category: string;
+}
+
+export interface Investment {
+  stockId: string;
+  shares: number;
+  totalInvested: number;
+}
+
 export interface CarStats {
   aerodynamics: number;
   powerUnit: number;
@@ -62,6 +78,7 @@ export interface TeamState {
   car: CarStats;
   color: string;
   currentStrategy?: RaceStrategy;
+  investments: Investment[];
 }
 
 export interface GameState {
@@ -70,6 +87,7 @@ export interface GameState {
   currentPlayerIndex: number;
   currentRaceIndex: number;
   seasonHistory: RaceResult[];
+  stocks: Stock[]; // La bolsa es global para la partida
   roomCode?: string;
   isHost?: boolean;
   onlineOpponentReady?: boolean;
