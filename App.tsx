@@ -10,6 +10,7 @@ import Economy from './components/Economy.tsx';
 import Sponsors from './components/Sponsors.tsx';
 import RaceSimulation from './components/RaceSimulation.tsx';
 import SeasonFinale from './components/SeasonFinale.tsx';
+import Tutorial from './components/Tutorial.tsx';
 import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment } from './types.ts';
 import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS, INITIAL_STOCKS } from './constants.tsx';
 import { Users, User, Globe, Search, Send, Play, Star } from 'lucide-react';
@@ -43,6 +44,7 @@ const App: React.FC = () => {
   const [isRacing, setIsRacing] = useState(false);
   const [showSeasonFinale, setShowSeasonFinale] = useState(false);
   const [showModeSelector, setShowModeSelector] = useState(() => !localStorage.getItem('f1_tycoon_game_v4'));
+  const [showTutorial, setShowTutorial] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
@@ -100,6 +102,9 @@ const App: React.FC = () => {
       setGameState(newState);
       setShowModeSelector(false);
       setShowSeasonFinale(false);
+      
+      // Mostrar tutorial automáticamente en partidas nuevas de carrera individual
+      if (mode === 'single') setShowTutorial(true);
     }
   };
 
@@ -329,6 +334,7 @@ const App: React.FC = () => {
         teamColor={currentTeam.color} 
         onReset={() => setShowModeSelector(true)} 
         onSave={handleSaveGame}
+        onOpenTutorial={() => setShowTutorial(true)}
         hasNewOffers={currentTeam.sponsorOffers.length > 0}
       />
       <main className="ml-64 flex-1 p-8 overflow-y-auto">
@@ -343,7 +349,7 @@ const App: React.FC = () => {
               isVersus={gameState.mode !== 'single'} 
             />
           )}
-          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.5, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
+          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.5, drivers: t.drivers.filter(x => x !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
           {activeTab === 'training' && <Training team={currentTeam} onTrainDriver={handleTrainDriver} />}
           {activeTab === 'economy' && <Economy team={currentTeam} stocks={gameState.stocks} onBuyStock={handleBuyStock} onSellStock={handleSellStock} />}
           {activeTab === 'engineering' && <Engineering team={currentTeam} onHireEngineer={e => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - e.cost, engineers: [...t.engineers, e]} : t)}))} onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, engineers: t.engineers.filter(x => x !== id)} : t)}))} />}
@@ -424,6 +430,7 @@ const App: React.FC = () => {
       </main>
       {isRacing && <RaceSimulation teams={gameState.teams} currentRaceIndex={gameState.currentRaceIndex} onFinish={handleFinishRace} isHost={gameState.isHost || gameState.mode !== 'online'} roomCode={gameState.roomCode} />}
       {showSeasonFinale && <SeasonFinale standings={driverStandings} onRestartSeason={handleRestartSeason} onFullReset={() => setShowModeSelector(true)} />}
+      {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} onStepChange={setActiveTab} />}
     </div>
   );
 };

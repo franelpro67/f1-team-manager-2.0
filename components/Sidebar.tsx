@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { LayoutDashboard, Users, Wrench, Trophy, Info, Briefcase, Coins, RotateCcw, Save, CheckCircle, Dumbbell, TrendingUp } from 'lucide-react';
+import { LayoutDashboard, Users, Wrench, Trophy, Info, Briefcase, Coins, RotateCcw, Save, CheckCircle, Dumbbell, TrendingUp, HelpCircle } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
@@ -8,10 +8,11 @@ interface SidebarProps {
   hasNewOffers?: boolean;
   onReset?: () => void;
   onSave?: () => void;
+  onOpenTutorial?: () => void;
   teamColor?: string;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers, onReset, onSave, teamColor = 'red' }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers, onReset, onSave, onOpenTutorial, teamColor = 'red' }) => {
   const [savedStatus, setSavedStatus] = useState(false);
 
   const menuItems = [
@@ -67,6 +68,13 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, hasNewOffers
       </nav>
 
       <div className="p-4 space-y-2 border-t border-slate-800">
+        <button
+          onClick={onOpenTutorial}
+          className="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-slate-300 hover:bg-slate-800 transition-all text-sm font-semibold"
+        >
+          <HelpCircle size={16} className="text-blue-400" />
+          <span>Cómo Jugar</span>
+        </button>
         <button
           onClick={handleManualSave}
           className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-semibold transition-all ${
