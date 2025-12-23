@@ -18,8 +18,12 @@ import * as OnlineService from './services/onlineService.ts';
 
 const MAX_RACES_PER_SEASON = 10;
 
-const getRandomSponsors = (count: number): Sponsor[] => {
-  const shuffled = [...AVAILABLE_SPONSORS].sort(() => 0.5 - Math.random());
+/**
+ * Genera sponsors aleatorios evitando los IDs proporcionados en excludeIds
+ */
+const getRandomSponsors = (count: number, excludeIds: string[] = []): Sponsor[] => {
+  const available = AVAILABLE_SPONSORS.filter(s => !excludeIds.includes(s.id));
+  const shuffled = [...available].sort(() => 0.5 - Math.random());
   return shuffled.slice(0, count);
 };
 
@@ -53,7 +57,6 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('f1_tycoon_game_v4');
     if (saved) {
       const parsed = JSON.parse(saved);
-      // Limpieza de duplicados en carga para corregir partidas corruptas
       parsed.teams = parsed.teams.map((t: TeamState) => ({
         ...t,
         activeSponsorIds: Array.from(new Set(t.activeSponsorIds))
@@ -102,8 +105,6 @@ const App: React.FC = () => {
       setGameState(newState);
       setShowModeSelector(false);
       setShowSeasonFinale(false);
-      
-      // Mostrar tutorial automáticamente en partidas nuevas de carrera individual
       if (mode === 'single') setShowTutorial(true);
     }
   };
@@ -132,11 +133,16 @@ const App: React.FC = () => {
         const activeSponsors = AVAILABLE_SPONSORS.filter(s => team.activeSponsorIds.includes(s.id));
         const sponsorPayout = activeSponsors.reduce((sum, s) => bestPos <= s.targetPosition ? sum + s.payoutPerRace : sum, 0);
         
+        // EXCLUSIÓN DE SPONSORS DUPLICADOS:
+        // No queremos ofertas de marcas que ya son sponsors activos o que ya tienen una oferta pendiente
+        const excludedIds = [...team.activeSponsorIds, ...team.sponsorOffers.map(o => o.id)];
+        const newOffers = getRandomSponsors(1, excludedIds);
+        
         return {
           ...team,
           funds: team.funds + (21 - bestPos) * 300000 + sponsorPayout + 2000000,
           reputation: Math.min(100, team.reputation + Math.max(0, 10 - bestPos)),
-          sponsorOffers: [...team.sponsorOffers, ...getRandomSponsors(1)].slice(0, 4),
+          sponsorOffers: [...team.sponsorOffers, ...newOffers].slice(0, 4),
           currentStrategy: undefined 
         };
       });
@@ -209,7 +215,6 @@ const App: React.FC = () => {
     setGameState(prev => {
       const newTeams = prev.teams.map((team, i) => {
         if (i !== prev.currentPlayerIndex) return team;
-        // Evitar duplicados y respetar el límite de 3
         const uniqueSponsors = Array.from(new Set(team.activeSponsorIds));
         if (uniqueSponsors.length >= 3 || uniqueSponsors.includes(sponsor.id)) return team;
         
@@ -349,7 +354,7 @@ const App: React.FC = () => {
               isVersus={gameState.mode !== 'single'} 
             />
           )}
-          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.5, drivers: t.drivers.filter(x => x !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
+          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.5, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
           {activeTab === 'training' && <Training team={currentTeam} onTrainDriver={handleTrainDriver} />}
           {activeTab === 'economy' && <Economy team={currentTeam} stocks={gameState.stocks} onBuyStock={handleBuyStock} onSellStock={handleSellStock} />}
           {activeTab === 'engineering' && <Engineering team={currentTeam} onHireEngineer={e => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - e.cost, engineers: [...t.engineers, e]} : t)}))} onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, engineers: t.engineers.filter(x => x !== id)} : t)}))} />}
