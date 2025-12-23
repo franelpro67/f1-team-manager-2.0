@@ -12,7 +12,7 @@ import RaceSimulation from './components/RaceSimulation.tsx';
 import SeasonFinale from './components/SeasonFinale.tsx';
 import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment } from './types.ts';
 import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS, INITIAL_STOCKS } from './constants.tsx';
-import { Users, User, Globe, Search, Send, Play } from 'lucide-react';
+import { Users, User, Globe, Search, Send, Play, Star } from 'lucide-react';
 import * as OnlineService from './services/onlineService.ts';
 
 const MAX_RACES_PER_SEASON = 10;
@@ -107,14 +107,12 @@ const App: React.FC = () => {
     setIsRacing(false);
     
     setGameState(prev => {
-      // 1. Actualizar la bolsa
       const updatedStocks = prev.stocks.map(stock => {
         const changePercent = (Math.random() - 0.5) * 2 * stock.volatility;
         const newPrice = Math.max(10, Math.round(stock.price * (1 + changePercent)));
         return { ...stock, price: newPrice, trend: changePercent * 100 };
       });
 
-      // 2. Actualizar equipos
       const updatedTeams = prev.teams.map(team => {
         const teamRes = result.teamResults.find(r => r.teamId === team.id);
         const bestPos = teamRes ? Math.min(teamRes.driver1Position, teamRes.driver2Position) : 20;
@@ -140,7 +138,6 @@ const App: React.FC = () => {
       };
     });
 
-    // Pequeño delay para que el usuario vea el resultado antes de la ceremonia si es fin de temporada
     if (gameState.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON) {
       setTimeout(() => setShowSeasonFinale(true), 2000);
     } else {
@@ -272,7 +269,7 @@ const App: React.FC = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 w-full animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-300 px-4">
-            <ModeCard onClick={() => handleStartGame('single')} icon={<User size={44} />} title="SINGLE CAREER" desc="Lidera tu propia escudería francesa o internacional hacia el podio mundial." />
+            <ModeCard onClick={() => handleStartGame('single')} icon={<User size={44} />} title="SINGLE CAREER" desc="Lidera tu propia escudería hacia el podio mundial." />
             <ModeCard onClick={() => handleStartGame('versus')} icon={<Users size={44} />} title="LOCAL VERSUS" desc="Duelo directo en el asfalto. El Paddock solo es lo suficientemente grande para uno." />
             <ModeCard onClick={() => setShowManualInput(true)} icon={<Globe size={44} />} title="PADDOCK ONLINE" desc="Sincroniza tu estrategia con otros directores de equipo en tiempo real." accent="border-cyan-600/70 hover:border-cyan-500 shadow-2xl shadow-cyan-900/30 bg-cyan-950/20" />
           </div>
@@ -360,14 +357,35 @@ const App: React.FC = () => {
                         <tr><th className="px-10 py-6">Pos</th><th className="px-10 py-6">Piloto</th><th className="px-10 py-6">Escudería</th><th className="px-10 py-6 text-right">Puntos</th></tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/50">
-                        {driverStandings.map((d, i) => (
-                          <tr key={d.name} className={`hover:bg-slate-800/20 transition-colors ${i < 3 ? 'bg-slate-800/10' : ''}`}>
-                            <td className="px-10 py-6 font-f1 text-lg"><span className={i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-500' : 'text-slate-500'}>{i + 1}</span></td>
-                            <td className="px-10 py-6 font-bold text-white flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">{d.name.substring(0,2)}</span> {d.name}</td>
-                            <td className="px-10 py-6 text-slate-400 text-xs font-bold uppercase italic">{d.team}</td>
-                            <td className="px-10 py-6 text-right font-f1 text-xl text-red-500">{d.points}</td>
-                          </tr>
-                        ))}
+                        {driverStandings.map((d, i) => {
+                          const isYourDriver = currentTeam.drivers.some(td => td.name === d.name);
+                          const accentClass = currentTeam.color === 'cyan' ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-red-600/30 bg-red-600/5';
+                          const badgeClass = currentTeam.color === 'cyan' ? 'bg-cyan-500 text-white' : 'bg-red-600 text-white';
+
+                          return (
+                            <tr key={d.name} className={`hover:bg-slate-800/20 transition-colors ${isYourDriver ? `${accentClass} relative` : i < 3 ? 'bg-slate-800/10' : ''}`}>
+                              <td className="px-10 py-6 font-f1 text-lg"><span className={i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-500' : 'text-slate-500'}>{i + 1}</span></td>
+                              <td className="px-10 py-6 font-bold text-white flex items-center gap-3">
+                                <span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">{d.name.substring(0,2)}</span> 
+                                <div className="flex flex-col">
+                                  <span>{d.name}</span>
+                                  {isYourDriver && (
+                                    <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-widest w-fit mt-1 shadow-lg ${badgeClass}`}>
+                                      TU EQUIPO
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="px-10 py-6 text-slate-400 text-xs font-bold uppercase italic">{d.team}</td>
+                              <td className="px-10 py-6 text-right font-f1 text-xl text-red-500">
+                                <div className="flex items-center justify-end gap-2">
+                                  {isYourDriver && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
+                                  {d.points}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                  </div>
