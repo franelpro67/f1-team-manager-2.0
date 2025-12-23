@@ -17,6 +17,7 @@ import { Users, User, Globe, Search, Send, Play, Star } from 'lucide-react';
 import * as OnlineService from './services/onlineService.ts';
 
 const MAX_RACES_PER_SEASON = 10;
+const SAVE_KEY = 'f1_tycoon_persistent_v1';
 
 /**
  * Genera sponsors aleatorios evitando los IDs proporcionados en excludeIds
@@ -47,21 +48,26 @@ const App: React.FC = () => {
   const [seasonTab, setSeasonTab] = useState<'wdc' | 'wcc'>('wdc');
   const [isRacing, setIsRacing] = useState(false);
   const [showSeasonFinale, setShowSeasonFinale] = useState(false);
-  const [showModeSelector, setShowModeSelector] = useState(() => !localStorage.getItem('f1_tycoon_game_v4'));
   const [showTutorial, setShowTutorial] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [showManualInput, setShowManualInput] = useState(false);
   
+  // Inicialización robusta desde LocalStorage
   const [gameState, setGameState] = useState<GameState>(() => {
-    const saved = localStorage.getItem('f1_tycoon_game_v4');
+    const saved = localStorage.getItem(SAVE_KEY);
     if (saved) {
-      const parsed = JSON.parse(saved);
-      parsed.teams = parsed.teams.map((t: TeamState) => ({
-        ...t,
-        activeSponsorIds: Array.from(new Set(t.activeSponsorIds))
-      }));
-      return parsed;
+      try {
+        const parsed = JSON.parse(saved);
+        // Limpieza básica de datos para evitar inconsistencias tras actualizaciones
+        parsed.teams = parsed.teams.map((t: TeamState) => ({
+          ...t,
+          activeSponsorIds: Array.from(new Set(t.activeSponsorIds || []))
+        }));
+        return parsed;
+      } catch (e) {
+        console.error("Error cargando partida guardada", e);
+      }
     }
     return {
       mode: 'single',
@@ -73,8 +79,18 @@ const App: React.FC = () => {
     };
   });
 
+  // Selector de modo dinámico basado en si ya existe una partida
+  const [showModeSelector, setShowModeSelector] = useState(() => !localStorage.getItem(SAVE_KEY));
+
+  // AUTO-SAVE: Se dispara cada vez que cambia el estado del juego
+  useEffect(() => {
+    if (!showModeSelector) {
+      localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
+    }
+  }, [gameState, showModeSelector]);
+
   const handleSaveGame = useCallback(() => {
-    localStorage.setItem('f1_tycoon_game_v4', JSON.stringify(gameState));
+    localStorage.setItem(SAVE_KEY, JSON.stringify(gameState));
   }, [gameState]);
 
   const driverStandings = useMemo(() => {
@@ -133,7 +149,6 @@ const App: React.FC = () => {
         const activeSponsors = AVAILABLE_SPONSORS.filter(s => team.activeSponsorIds.includes(s.id));
         const sponsorPayout = activeSponsors.reduce((sum, s) => bestPos <= s.targetPosition ? sum + s.payoutPerRace : sum, 0);
         
-        // EXCLUSIÓN DE SPONSORS DUPLICADOS:
         const excludedIds = [...team.activeSponsorIds, ...team.sponsorOffers.map(o => o.id)];
         const newOffers = getRandomSponsors(1, excludedIds);
         
@@ -336,7 +351,12 @@ const App: React.FC = () => {
         activeTab={activeTab} 
         setActiveTab={setActiveTab} 
         teamColor={currentTeam.color} 
-        onReset={() => setShowModeSelector(true)} 
+        onReset={() => {
+           if(confirm("¿Seguro que quieres borrar tu partida?")) {
+              localStorage.removeItem(SAVE_KEY);
+              setShowModeSelector(true);
+           }
+        }} 
         onSave={handleSaveGame}
         onOpenTutorial={() => setShowTutorial(true)}
         hasNewOffers={currentTeam.sponsorOffers.length > 0}
