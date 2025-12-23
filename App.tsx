@@ -9,10 +9,13 @@ import Training from './components/Training.tsx';
 import Economy from './components/Economy.tsx';
 import Sponsors from './components/Sponsors.tsx';
 import RaceSimulation from './components/RaceSimulation.tsx';
+import SeasonFinale from './components/SeasonFinale.tsx';
 import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment } from './types.ts';
 import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS, INITIAL_STOCKS } from './constants.tsx';
 import { Users, User, Globe, Search, Send, Play } from 'lucide-react';
 import * as OnlineService from './services/onlineService.ts';
+
+const MAX_RACES_PER_SEASON = 10;
 
 const getRandomSponsors = (count: number): Sponsor[] => {
   const shuffled = [...AVAILABLE_SPONSORS].sort(() => 0.5 - Math.random());
@@ -38,6 +41,7 @@ const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [seasonTab, setSeasonTab] = useState<'wdc' | 'wcc'>('wdc');
   const [isRacing, setIsRacing] = useState(false);
+  const [showSeasonFinale, setShowSeasonFinale] = useState(false);
   const [showModeSelector, setShowModeSelector] = useState(() => !localStorage.getItem('f1_tycoon_game_v4'));
   const [isSearching, setIsSearching] = useState(false);
   const [manualCode, setManualCode] = useState('');
@@ -87,6 +91,7 @@ const App: React.FC = () => {
       const newState: GameState = { mode, teams, currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [], stocks: INITIAL_STOCKS };
       setGameState(newState);
       setShowModeSelector(false);
+      setShowSeasonFinale(false);
     }
   };
 
@@ -102,15 +107,11 @@ const App: React.FC = () => {
     setIsRacing(false);
     
     setGameState(prev => {
-      // 1. Actualizar la bolsa (Bolsa global)
+      // 1. Actualizar la bolsa
       const updatedStocks = prev.stocks.map(stock => {
         const changePercent = (Math.random() - 0.5) * 2 * stock.volatility;
         const newPrice = Math.max(10, Math.round(stock.price * (1 + changePercent)));
-        return {
-          ...stock,
-          price: newPrice,
-          trend: changePercent * 100
-        };
+        return { ...stock, price: newPrice, trend: changePercent * 100 };
       });
 
       // 2. Actualizar equipos
@@ -129,6 +130,8 @@ const App: React.FC = () => {
         };
       });
 
+      const isSeasonEnd = prev.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON;
+
       return {
         ...prev,
         stocks: updatedStocks,
@@ -139,7 +142,22 @@ const App: React.FC = () => {
       };
     });
 
-    setActiveTab('season');
+    // Pequeño delay para que el usuario vea el resultado antes de la ceremonia si es fin de temporada
+    if (gameState.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON) {
+      setTimeout(() => setShowSeasonFinale(true), 2000);
+    } else {
+      setActiveTab('season');
+    }
+  };
+
+  const handleRestartSeason = () => {
+    setGameState(prev => ({
+      ...prev,
+      currentRaceIndex: 0,
+      seasonHistory: []
+    }));
+    setShowSeasonFinale(false);
+    setActiveTab('dashboard');
   };
 
   const handleBuyStock = (stockId: string, quantity: number, price: number) => {
@@ -147,28 +165,15 @@ const App: React.FC = () => {
       const newTeams = [...prev.teams];
       const team = newTeams[prev.currentPlayerIndex];
       const cost = quantity * price;
-      
       if (team.funds < cost) return prev;
-
       const updatedInvestments = [...team.investments];
       const invIndex = updatedInvestments.findIndex(i => i.stockId === stockId);
-
       if (invIndex >= 0) {
-        updatedInvestments[invIndex] = {
-          ...updatedInvestments[invIndex],
-          shares: updatedInvestments[invIndex].shares + quantity,
-          totalInvested: updatedInvestments[invIndex].totalInvested + cost
-        };
+        updatedInvestments[invIndex] = { ...updatedInvestments[invIndex], shares: updatedInvestments[invIndex].shares + quantity, totalInvested: updatedInvestments[invIndex].totalInvested + cost };
       } else {
         updatedInvestments.push({ stockId, shares: quantity, totalInvested: cost });
       }
-
-      newTeams[prev.currentPlayerIndex] = {
-        ...team,
-        funds: team.funds - cost,
-        investments: updatedInvestments
-      };
-
+      newTeams[prev.currentPlayerIndex] = { ...team, funds: team.funds - cost, investments: updatedInvestments };
       return { ...prev, teams: newTeams };
     });
   };
@@ -179,28 +184,15 @@ const App: React.FC = () => {
       const team = newTeams[prev.currentPlayerIndex];
       const updatedInvestments = [...team.investments];
       const invIndex = updatedInvestments.findIndex(i => i.stockId === stockId);
-
       if (invIndex === -1 || updatedInvestments[invIndex].shares < quantity) return prev;
-
       const revenue = quantity * price;
       const inv = updatedInvestments[invIndex];
-      
       if (inv.shares === quantity) {
         updatedInvestments.splice(invIndex, 1);
       } else {
-        updatedInvestments[invIndex] = {
-          ...inv,
-          shares: inv.shares - quantity,
-          totalInvested: inv.totalInvested * ((inv.shares - quantity) / inv.shares)
-        };
+        updatedInvestments[invIndex] = { ...inv, shares: inv.shares - quantity, totalInvested: inv.totalInvested * ((inv.shares - quantity) / inv.shares) };
       }
-
-      newTeams[prev.currentPlayerIndex] = {
-        ...team,
-        funds: team.funds + revenue,
-        investments: updatedInvestments
-      };
-
+      newTeams[prev.currentPlayerIndex] = { ...team, funds: team.funds + revenue, investments: updatedInvestments };
       return { ...prev, teams: newTeams };
     });
   };
@@ -210,12 +202,7 @@ const App: React.FC = () => {
       const newTeams = [...prev.teams];
       const team = newTeams[prev.currentPlayerIndex];
       if (team.activeSponsorIds.length >= 3) return prev;
-      newTeams[prev.currentPlayerIndex] = {
-        ...team,
-        funds: team.funds + sponsor.signingBonus,
-        activeSponsorIds: [...team.activeSponsorIds, sponsor.id],
-        sponsorOffers: team.sponsorOffers.filter(o => o.id !== sponsor.id)
-      };
+      newTeams[prev.currentPlayerIndex] = { ...team, funds: team.funds + sponsor.signingBonus, activeSponsorIds: [...team.activeSponsorIds, sponsor.id], sponsorOffers: team.sponsorOffers.filter(o => o.id !== sponsor.id) };
       return { ...prev, teams: newTeams };
     });
   };
@@ -226,21 +213,10 @@ const App: React.FC = () => {
       const team = newTeams[prev.currentPlayerIndex];
       const driverIndex = team.drivers.findIndex(d => d.id === driverId);
       if (driverIndex === -1 || team.funds < cost) return prev;
-
       const updatedDrivers = [...team.drivers];
       const gain = stat === 'experience' ? 5 : stat === 'consistency' ? 3 : 2;
-      
-      updatedDrivers[driverIndex] = {
-        ...updatedDrivers[driverIndex],
-        [stat]: Math.min(99, updatedDrivers[driverIndex][stat] + gain)
-      };
-
-      newTeams[prev.currentPlayerIndex] = {
-        ...team,
-        funds: team.funds - cost,
-        drivers: updatedDrivers
-      };
-
+      updatedDrivers[driverIndex] = { ...updatedDrivers[driverIndex], [stat]: Math.min(99, updatedDrivers[driverIndex][stat] + gain) };
+      newTeams[prev.currentPlayerIndex] = { ...team, funds: team.funds - cost, drivers: updatedDrivers };
       return { ...prev, teams: newTeams };
     });
   };
@@ -252,13 +228,10 @@ const App: React.FC = () => {
       <div className="min-h-screen relative flex flex-col items-center justify-center p-8 overflow-hidden bg-slate-950">
         <div 
           className="absolute inset-0 bg-cover bg-center transition-transform duration-[40s] scale-110 animate-[pulse_10s_ease-in-out_infinite]"
-          style={{ 
-            backgroundImage: `url('https://images.unsplash.com/photo-1647891941746-fe1d57dadc97?auto=format&fit=crop&q=80&w=2070')`,
-          }}
+          style={{ backgroundImage: `url('https://images.unsplash.com/photo-1647891941746-fe1d57dadc97?auto=format&fit=crop&q=80&w=2070')` }}
         />
         <div className="absolute inset-0 bg-gradient-to-b from-slate-950/95 via-blue-900/10 to-slate-950/95" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(2,6,23,0.9)_100%)]" />
-        
         <div className="relative z-10 text-center space-y-16 max-w-7xl w-full">
           <div className="space-y-4 animate-in fade-in slide-in-from-top-12 duration-1000">
             <h1 className="text-8xl md:text-9xl font-f1 font-bold text-red-600 italic tracking-tighter drop-shadow-[0_0_80px_rgba(220,38,38,0.8)]">F1 TYCOON</h1>
@@ -268,19 +241,16 @@ const App: React.FC = () => {
               <div className="h-0.5 w-24 bg-gradient-to-l from-transparent to-red-600"></div>
             </div>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10 w-full animate-in fade-in slide-in-from-bottom-16 duration-1000 delay-300 px-4">
             <ModeCard onClick={() => handleStartGame('single')} icon={<User size={44} />} title="SINGLE CAREER" desc="Lidera tu propia escudería francesa o internacional hacia el podio mundial." />
             <ModeCard onClick={() => handleStartGame('versus')} icon={<Users size={44} />} title="LOCAL VERSUS" desc="Duelo directo en el asfalto. El Paddock solo es lo suficientemente grande para uno." />
             <ModeCard onClick={() => setShowManualInput(true)} icon={<Globe size={44} />} title="PADDOCK ONLINE" desc="Sincroniza tu estrategia con otros directores de equipo en tiempo real." accent="border-cyan-600/70 hover:border-cyan-500 shadow-2xl shadow-cyan-900/30 bg-cyan-950/20" />
           </div>
-
           <div className="flex flex-col items-center gap-3 text-red-600 animate-bounce">
             <Play size={20} className="rotate-90 fill-red-600" />
             <span className="text-[10px] font-black tracking-[0.6em] uppercase text-slate-300">Arrancar Motores</span>
           </div>
         </div>
-
         {showManualInput && (
           <div className="fixed inset-0 bg-black/98 backdrop-blur-3xl flex items-center justify-center z-[100] p-6 animate-in fade-in duration-300">
              <div className="bg-slate-900/90 p-12 rounded-[4rem] border-4 border-red-600 max-w-md w-full shadow-[0_0_150px_rgba(220,38,38,0.4)]">
@@ -338,14 +308,15 @@ const App: React.FC = () => {
           {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.5, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
           {activeTab === 'training' && <Training team={currentTeam} onTrainDriver={handleTrainDriver} />}
           {activeTab === 'economy' && <Economy team={currentTeam} stocks={gameState.stocks} onBuyStock={handleBuyStock} onSellStock={handleSellStock} />}
-          {activeTab === 'engineering' && <Engineering team={currentTeam} onHireEngineer={e => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - e.cost, engineers: [...t.engineers, e]} : t)}))} onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, engineers: t.engineers.filter(x => x.id !== id)} : t)}))} />}
+          {/* Fix: onHireEngineer callback was using undefined variables 'team' and 't'. Corrected to map over teams. */}
+          {activeTab === 'engineering' && <Engineering team={currentTeam} onHireEngineer={e => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - e.cost, engineers: [...t.engineers, e]} : t)}))} onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, engineers: t.engineers.filter(x => x !== id)} : t)}))} />}
           {activeTab === 'factory' && <Factory team={currentTeam} onUpgrade={(p, c) => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - c, car: {...t.car, [p]: t.car[p] + 1}} : t)}))} />}
           {activeTab === 'sponsors' && <Sponsors team={currentTeam} onAcceptSponsor={handleAcceptSponsor} onRejectSponsor={() => {}} onCancelActive={() => {}} />}
           {activeTab === 'season' && (
              <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                <div className="flex justify-between items-end">
                  <div>
-                   <h2 className="text-4xl font-f1 font-bold italic tracking-tighter uppercase">Temporada {gameState.currentRaceIndex + 2024}</h2>
+                   <h2 className="text-4xl font-f1 font-bold italic tracking-tighter uppercase">GP {gameState.currentRaceIndex} / {MAX_RACES_PER_SEASON}</h2>
                    <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Resultados Oficiales FIA</p>
                  </div>
                  <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
@@ -353,29 +324,17 @@ const App: React.FC = () => {
                     <button onClick={() => setSeasonTab('wcc')} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${seasonTab === 'wcc' ? 'bg-red-600 text-white' : 'text-slate-500 hover:text-white'}`}>Mundial Constructores (WCC)</button>
                  </div>
                </div>
-
                {seasonTab === 'wdc' ? (
                  <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
                     <table className="w-full text-left">
                       <thead className="bg-slate-950/50 border-b border-slate-800 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
-                        <tr>
-                          <th className="px-10 py-6">Pos</th>
-                          <th className="px-10 py-6">Piloto</th>
-                          <th className="px-10 py-6">Escudería</th>
-                          <th className="px-10 py-6 text-right">Puntos</th>
-                        </tr>
+                        <tr><th className="px-10 py-6">Pos</th><th className="px-10 py-6">Piloto</th><th className="px-10 py-6">Escudería</th><th className="px-10 py-6 text-right">Puntos</th></tr>
                       </thead>
                       <tbody className="divide-y divide-slate-800/50">
                         {driverStandings.map((d, i) => (
                           <tr key={d.name} className={`hover:bg-slate-800/20 transition-colors ${i < 3 ? 'bg-slate-800/10' : ''}`}>
-                            <td className="px-10 py-6 font-f1 text-lg">
-                              <span className={i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-500' : 'text-slate-500'}>
-                                {i + 1}
-                              </span>
-                            </td>
-                            <td className="px-10 py-6 font-bold text-white flex items-center gap-3">
-                              <span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">{d.name.substring(0,2)}</span> {d.name}
-                            </td>
+                            <td className="px-10 py-6 font-f1 text-lg"><span className={i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-500' : 'text-slate-500'}>{i + 1}</span></td>
+                            <td className="px-10 py-6 font-bold text-white flex items-center gap-3"><span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">{d.name.substring(0,2)}</span> {d.name}</td>
                             <td className="px-10 py-6 text-slate-400 text-xs font-bold uppercase italic">{d.team}</td>
                             <td className="px-10 py-6 text-right font-f1 text-xl text-red-500">{d.points}</td>
                           </tr>
@@ -406,6 +365,7 @@ const App: React.FC = () => {
         </div>
       </main>
       {isRacing && <RaceSimulation teams={gameState.teams} currentRaceIndex={gameState.currentRaceIndex} onFinish={handleFinishRace} isHost={gameState.isHost || gameState.mode !== 'online'} roomCode={gameState.roomCode} />}
+      {showSeasonFinale && <SeasonFinale standings={driverStandings} onRestartSeason={handleRestartSeason} onFullReset={() => setShowModeSelector(true)} />}
     </div>
   );
 };
