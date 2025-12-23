@@ -8,11 +8,11 @@ const TRACKS = ["Bahrein", "Arabia Saudita", "Australia", "Azerbaiyán", "Miami"
 const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
 
 /**
- * Simulador de respaldo matemático en caso de que la IA falle.
- * Calcula posiciones realistas basadas en el rendimiento real del equipo.
+ * Simulador de respaldo matemático optimizado.
+ * Ahora permite que un gran piloto destaque incluso con un coche poco desarrollado.
  */
 function fallbackSimulation(teams: TeamState[], raceName: string): RaceResult {
-  console.warn("Utilizando simulador de respaldo matemático.");
+  console.warn("Utilizando simulador de respaldo optimizado.");
   
   interface Competitor {
     name: string;
@@ -23,33 +23,48 @@ function fallbackSimulation(teams: TeamState[], raceName: string): RaceResult {
 
   const competitors: Competitor[] = [];
 
-  // 1. Añadir pilotos humanos
+  // 1. Añadir pilotos del jugador(es) con nueva fórmula de balanceo
   teams.forEach(t => {
     t.activeDriverIds.forEach(id => {
       const driver = t.drivers.find(d => d.id === id);
       if (driver) {
-        const carPower = (t.car.aerodynamics + t.car.powerUnit + t.car.chassis) / 3;
-        const strategyBonus = t.currentStrategy === '2-STOP' ? 2 : 0;
-        const luck = Math.random() * 15;
-        const score = (driver.pace * 0.45) + (carPower * 10 * 0.35) + (driver.experience * 0.1) + strategyBonus + luck;
+        // Promedio de piezas (1-15)
+        const carLevel = (t.car.aerodynamics + t.car.powerUnit + t.car.chassis) / 3;
+        
+        // FÓRMULA DE RENDIMIENTO MEJORADA:
+        // - Base de coche: Un nivel 1 ahora da 60 puntos de base (en lugar de casi 0)
+        // - Peso del piloto: El talento del piloto (Pace) ahora influye un 60% en el resultado final
+        // - Suerte/Estrategia: Un factor aleatorio que permite sorpresas
+        const carPerformance = 60 + (carLevel * 2.5); // Nivel 1 = 62.5, Nivel 10 = 85
+        const driverPerformance = driver.pace; // Ej: Vettel = 92
+        
+        const strategyBonus = t.currentStrategy === '2-STOP' ? 3 : 0;
+        const randomness = Math.random() * 12;
+        
+        const score = (driverPerformance * 0.6) + (carPerformance * 0.4) + strategyBonus + randomness;
         competitors.push({ name: driver.name, teamName: t.name, teamId: t.id, score });
       }
     });
   });
 
-  // 2. Añadir rivales de la parrilla
-  RIVAL_TEAMS.forEach(rt => {
+  // 2. Añadir rivales con variabilidad (No todos son Red Bull)
+  RIVAL_TEAMS.forEach((rt, index) => {
     rt.drivers.forEach(dn => {
-      // Intentar buscar stats reales del piloto si existe en AVAILABLE_DRIVERS, si no, inventar
       const refDriver = AVAILABLE_DRIVERS.find(ad => ad.name === dn);
-      const pace = refDriver?.pace || (80 + Math.random() * 15);
-      const carPower = 8.5; // Los rivales tienen coches competitivos por defecto
-      const score = (pace * 0.45) + (carPower * 10 * 0.35) + (Math.random() * 15);
+      const pace = refDriver?.pace || (82 + Math.random() * 10);
+      
+      // Los equipos rivales tienen diferentes potencias de coche para crear una parrilla realista
+      // Equipos top (Red Bull, Ferrari) vs Equipos fondo (Haas, Williams)
+      let rivalCarPower = 78; // Base media
+      if (rt.name.includes("Red Bull") || rt.name.includes("Ferrari")) rivalCarPower = 88;
+      if (rt.name.includes("Haas") || rt.name.includes("Williams")) rivalCarPower = 68;
+      
+      const score = (pace * 0.55) + (rivalCarPower * 0.45) + (Math.random() * 10);
       competitors.push({ name: dn, teamName: rt.name, teamId: null, score });
     });
   });
 
-  // 3. Ordenar por puntuación y asignar posiciones
+  // 3. Ordenar y clasificar
   const sorted = competitors.sort((a, b) => b.score - a.score);
   const fullClassification = sorted.map((c, i) => ({
     driverName: c.name,
@@ -73,8 +88,8 @@ function fallbackSimulation(teams: TeamState[], raceName: string): RaceResult {
   return {
     raceName: `${raceName} Grand Prix`,
     teamResults,
-    commentary: "Simulación técnica completada por el departamento de telemetría. La carrera ha sido extremadamente disputada en todos los sectores.",
-    events: ["Duelo intenso en la primera curva", "Gestión crítica de neumáticos", "Estrategia de paradas decisiva"],
+    commentary: "La telemetría indica que el talento del piloto ha sido clave hoy para mantener el ritmo frente a escuderías más veteranas.",
+    events: ["Adelantamiento magistral en el sector 2", "Gestión de neumáticos impecable", "Batalla rueda a rueda por el top 10"],
     fullClassification
   };
 }
@@ -91,23 +106,27 @@ export async function simulateRace(teams: TeamState[], currentRaceIndex: number)
   const teamsContext = teams.map(t => {
     const d1 = t.drivers.find(d => d.id === t.activeDriverIds[0]);
     const d2 = t.drivers.find(d => d.id === t.activeDriverIds[1]);
-    const avgStaffRating = t.engineers.length > 0 ? t.engineers.reduce((s,e) => s + e.rating, 0) / t.engineers.length : 0;
+    const carAvg = (t.car.aerodynamics + t.car.powerUnit + t.car.chassis) / 3;
     
     return `
-      Team "${t.name}": Aero Lvl ${t.car.aerodynamics}, Power Lvl ${t.car.powerUnit}, Chassis Lvl ${t.car.chassis}.
-      Drivers: ${d1?.name || 'Unknown'} (Pace: ${d1?.pace}), ${d2?.name || 'Unknown'} (Pace: ${d2?.pace}).
-      Staff Rating: ${avgStaffRating.toFixed(0)}. Strategy: ${t.currentStrategy || '1-STOP'}.
+      Team "${t.name}": Car Level ${carAvg.toFixed(1)}/15 (1 is beginner, 10 is elite).
+      Driver 1: ${d1?.name} (Pace: ${d1?.pace}), Driver 2: ${d2?.name} (Pace: ${d2?.pace}).
+      Strategy: ${t.currentStrategy}. 
+      NOTE: If a driver has high pace (90+), they should be able to fight for Top 10 even if the car is Level 1-2.
     `;
   }).join("\n");
 
-  const rivalsStr = RIVAL_TEAMS.map(r => `${r.name} (${r.drivers.join(", ")})`).join("; ");
-
   const prompt = `
-    Simulate F1 race at ${raceName}. 
-    Classify 20 drivers. Human teams:
+    Simulate a realistic F1 race at ${raceName}.
+    CLASSYFY 20 DRIVERS. Use logic where world-class drivers can overperform in mediocre cars.
+    
+    HUMAN TEAMS:
     ${teamsContext}
-    Rivales: ${rivalsStr}.
-    Return JSON: { fullClassification: [{driverName, teamName, position}], commentary, events }.
+    
+    RIVALS: Red Bull, Ferrari, Mercedes, McLaren, Aston Martin, Alpine, Williams, RB, Haas.
+    
+    Format classification: [{driverName, teamName, position}].
+    Include commentary about how the drivers' skill influenced the result.
   `;
 
   try {
@@ -142,16 +161,12 @@ export async function simulateRace(teams: TeamState[], currentRaceIndex: number)
 
     const data = JSON.parse(response.text || '{}');
     
-    // Validar datos mínimos
-    if (!data.fullClassification || data.fullClassification.length < 5) {
-      throw new Error("Respuesta de IA incompleta");
-    }
+    if (!data.fullClassification || data.fullClassification.length < 10) throw new Error("IA Incomplete");
 
     const teamResults = teams.map(t => {
       const d1 = t.drivers.find(d => d.id === t.activeDriverIds[0]);
       const d2 = t.drivers.find(d => d.id === t.activeDriverIds[1]);
       
-      // Emparejamiento flexible de nombres (ignorando mayúsculas/minúsculas y espacios)
       const findPos = (name: string | undefined) => {
         if (!name) return 18;
         const entry = data.fullClassification.find((c: any) => 
@@ -179,7 +194,6 @@ export async function simulateRace(teams: TeamState[], currentRaceIndex: number)
       fullClassification: data.fullClassification.map((c: any) => ({ ...c, points: getPoints(c.position) }))
     };
   } catch (error) {
-    console.error("AI Simulation failed, falling back to math engine.", error);
     return fallbackSimulation(teams, raceName);
   }
 }
@@ -187,10 +201,10 @@ export async function simulateRace(teams: TeamState[], currentRaceIndex: number)
 export async function getEngineerAdvice(team: TeamState): Promise<string> {
   try {
     const ai = getAI();
-    const prompt = `Advice for F1 team "${team.name}". Funds: $${(team.funds/1000000).toFixed(1)}M. Aero:${team.car.aerodynamics}. Short and technical.`;
+    const prompt = `Short technical advice for F1 team ${team.name} with car levels Aero:${team.car.aerodynamics}, Engine:${team.car.powerUnit}.`;
     const response = await ai.models.generateContent({ model: "gemini-3-flash-preview", contents: prompt });
-    return response.text || "Maximizar el desarrollo del túnel de viento.";
+    return response.text || "Centrarse en la aerodinámica para las próximas curvas rápidas.";
   } catch (e) {
-    return "Centrarse en la fiabilidad para evitar abandonos.";
+    return "Optimizar la entrega de potencia en bajas revoluciones.";
   }
 }
