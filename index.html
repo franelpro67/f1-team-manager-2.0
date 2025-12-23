@@ -7,11 +7,20 @@
     <title>F1 Tycoon</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script>
+        // Shim para evitar el error "process is not defined" en el navegador
+        window.process = {
+            env: {
+                API_KEY: "" // Vercel inyectará esto si está configurado en el dashboard
+            }
+        };
+    </script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
             background-color: #0f172a;
             color: #f8fafc;
+            margin: 0;
         }
         .font-f1 {
             font-family: 'Orbitron', sans-serif;
@@ -45,5 +54,7 @@
 </head>
 <body>
     <div id="root"></div>
+    <!-- Punto de entrada de la aplicación -->
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>

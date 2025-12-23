@@ -5,8 +5,11 @@ import { RIVAL_TEAMS } from "../constants";
 
 const TRACKS = ["Bahrain", "Saudi", "Australia", "Baku", "Miami", "Monaco", "Spain", "Canada", "Austria", "Silverstone"];
 
+// Función para obtener la instancia de AI de forma segura
+const getAI = () => new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+
 export async function simulateRace(teams: TeamState[], currentRaceIndex: number): Promise<RaceResult> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAI();
   const trackIndex = currentRaceIndex % TRACKS.length;
   const raceName = TRACKS[trackIndex];
 
@@ -119,7 +122,7 @@ export async function simulateRace(teams: TeamState[], currentRaceIndex: number)
 }
 
 export async function getEngineerAdvice(team: TeamState): Promise<string> {
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const ai = getAI();
   const prompt = `Advice for F1 team "${team.name}". Funds: $${(team.funds/1000000).toFixed(1)}M. Lvl Aero:${team.car.aerodynamics}. Concise advice.`;
   const response = await ai.models.generateContent({ model: "gemini-3-flash-preview", contents: prompt });
   return response.text || "Push development.";
