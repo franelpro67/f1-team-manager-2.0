@@ -13,7 +13,7 @@ import SeasonFinale from './components/SeasonFinale.tsx';
 import Tutorial from './components/Tutorial.tsx';
 import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment, Engineer } from './types.ts';
 import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS, INITIAL_STOCKS } from './constants.tsx';
-import { Users, User, Globe, Search, Send, Play, Star, Shield, LayoutDashboard, Flag } from 'lucide-react';
+import { Users, User, Globe, Search, Send, Play, Star, Shield, LayoutDashboard, Flag, Lock, Zap } from 'lucide-react';
 import * as OnlineService from './services/onlineService.ts';
 
 const MAX_RACES_PER_SEASON = 10;
@@ -68,7 +68,12 @@ const App: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return parsed;
+        return {
+          ...parsed,
+          consecutiveWdcWins: parsed.consecutiveWdcWins || 0,
+          competitiveUnlocked: parsed.competitiveUnlocked || false,
+          difficultyMultiplier: parsed.difficultyMultiplier || 1.0
+        };
       } catch (e) {
         console.error("Error cargando partida guardada", e);
       }
@@ -79,7 +84,10 @@ const App: React.FC = () => {
       currentPlayerIndex: 0,
       currentRaceIndex: 0,
       seasonHistory: [],
-      stocks: INITIAL_STOCKS
+      stocks: INITIAL_STOCKS,
+      consecutiveWdcWins: 0,
+      competitiveUnlocked: false,
+      difficultyMultiplier: 1.0
     };
   });
 
@@ -133,7 +141,6 @@ const App: React.FC = () => {
         if (i !== prev.currentPlayerIndex) return t;
         const driverToSell = t.drivers.find(d => d.id === driverId);
         if (!driverToSell) return t;
-        
         const refund = driverToSell.cost * 0.8;
         return {
           ...t,
@@ -151,11 +158,7 @@ const App: React.FC = () => {
       const updatedTeams = prev.teams.map((t, i) => {
         if (i !== prev.currentPlayerIndex) return t;
         if (t.funds < engineer.cost || t.engineers.length >= 3) return t;
-        return {
-          ...t,
-          funds: t.funds - engineer.cost,
-          engineers: [...t.engineers, engineer]
-        };
+        return { ...t, funds: t.funds - engineer.cost, engineers: [...t.engineers, engineer] };
       });
       return { ...prev, teams: updatedTeams };
     });
@@ -168,35 +171,53 @@ const App: React.FC = () => {
         const engToFire = t.engineers.find(e => e.id === engineerId);
         if (!engToFire) return t;
         const refund = engToFire.cost * 0.8;
-        return {
-          ...t,
-          funds: t.funds + refund,
-          engineers: t.engineers.filter(e => e.id !== engineerId)
-        };
+        return { ...t, funds: t.funds + refund, engineers: t.engineers.filter(e => e.id !== engineerId) };
       });
       return { ...prev, teams: updatedTeams };
     });
   }, []);
 
-  const handleStartGame = (mode: 'single' | 'versus' | 'online') => {
+  const handleStartGame = (mode: 'single' | 'versus' | 'online' | 'competitive') => {
     if (mode === 'online') {
       setIsSearching(true);
       setTimeout(() => {
         setIsSearching(false);
-        alert("Paddock Global no disponible en este momento. Prueba el modo Single Player.");
+        alert("Paddock Global no disponible.");
       }, 2000);
-    } else {
-      const funds = mode === 'single' ? INITIAL_FUNDS : VERSUS_FUNDS;
-      const teams = mode === 'single' 
-        ? [createInitialTeam(0, "Tu Escudería", "red", funds)]
-        : [createInitialTeam(0, "Player 1", "red", funds), createInitialTeam(1, "Player 2", "cyan", funds)];
-      
-      const newState: GameState = { mode, teams, currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [], stocks: INITIAL_STOCKS };
-      setGameState(newState);
-      setShowModeSelector(false);
-      setShowSeasonFinale(false);
-      if (mode === 'single') setShowTutorial(true);
+      return;
     }
+
+    if (mode === 'competitive') {
+      // Inicia con el equipo actual pero dificultad aumentada
+      setGameState(prev => ({
+        ...prev,
+        mode: 'competitive',
+        currentRaceIndex: 0,
+        seasonHistory: [],
+        difficultyMultiplier: 1.1 // Dificultad base competitiva +10%
+      }));
+      setShowModeSelector(false);
+      setActiveTab('dashboard');
+      return;
+    }
+
+    const funds = mode === 'versus' ? VERSUS_FUNDS : INITIAL_FUNDS;
+    const teams = mode === 'single' 
+      ? [createInitialTeam(0, "Tu Escudería", "red", funds)]
+      : [createInitialTeam(0, "Player 1", "red", funds), createInitialTeam(1, "Player 2", "cyan", funds)];
+    
+    setGameState(prev => ({
+      ...prev,
+      mode,
+      teams,
+      currentPlayerIndex: 0,
+      currentRaceIndex: 0,
+      seasonHistory: [],
+      difficultyMultiplier: 1.0
+    }));
+    setShowModeSelector(false);
+    setShowSeasonFinale(false);
+    if (mode === 'single') setShowTutorial(true);
   };
 
   const handleRaceStartWithStrategy = (strategy: RaceStrategy) => {
@@ -212,21 +233,18 @@ const App: React.FC = () => {
     setGameState(prev => {
       const updatedStocks = prev.stocks.map(stock => {
         const changePercent = (Math.random() - 0.5) * 2 * stock.volatility;
-        const newPrice = Math.max(10, Math.round(stock.price * (1 + changePercent)));
-        return { ...stock, price: newPrice, trend: changePercent * 100 };
+        return { ...stock, price: Math.max(10, Math.round(stock.price * (1 + changePercent))), trend: changePercent * 100 };
       });
       const updatedTeams = prev.teams.map(team => {
         const teamRes = result.teamResults.find(r => r.teamId === team.id);
         const bestPos = teamRes ? Math.min(teamRes.driver1Position, teamRes.driver2Position) : 20;
         const activeSponsors = AVAILABLE_SPONSORS.filter(s => team.activeSponsorIds.includes(s.id));
         const sponsorPayout = activeSponsors.reduce((sum, s) => bestPos <= s.targetPosition ? sum + s.payoutPerRace : sum, 0);
-        const excludedIds = [...team.activeSponsorIds, ...team.sponsorOffers.map(o => o.id)];
-        const newOffers = getRandomSponsors(1, excludedIds);
         return {
           ...team,
           funds: team.funds + (21 - bestPos) * 300000 + sponsorPayout + 2000000,
           reputation: Math.min(100, team.reputation + Math.max(0, 10 - bestPos)),
-          sponsorOffers: [...team.sponsorOffers, ...newOffers].slice(0, 4),
+          sponsorOffers: [...team.sponsorOffers, ...getRandomSponsors(1)].slice(0, 4),
           currentStrategy: undefined 
         };
       });
@@ -239,15 +257,40 @@ const App: React.FC = () => {
         currentPlayerIndex: 0
       };
     });
+
     if (gameState.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON) {
-      setTimeout(() => setShowSeasonFinale(true), 2000);
+      // Fin de temporada: Verificar Campeón
+      const winner = driverStandings[0];
+      const teamOfWinner = gameState.teams.find(t => t.drivers.some(d => d.name === winner?.name));
+      const playerWon = teamOfWinner?.id === 0;
+
+      setGameState(prev => {
+        const newConsecutive = playerWon ? prev.consecutiveWdcWins + 1 : 0;
+        const unlocked = prev.competitiveUnlocked || newConsecutive >= 2;
+        return {
+          ...prev,
+          consecutiveWdcWins: newConsecutive,
+          competitiveUnlocked: unlocked
+        };
+      });
+
+      setTimeout(() => setShowSeasonFinale(true), 1500);
     } else {
       setActiveTab('season');
     }
   };
 
   const handleRestartSeason = () => {
-    setGameState(prev => ({ ...prev, currentRaceIndex: 0, seasonHistory: [] }));
+    setGameState(prev => {
+      // Si estamos en modo competitivo, la dificultad aumenta un 10% cada temporada
+      const nextDifficulty = prev.mode === 'competitive' ? prev.difficultyMultiplier * 1.1 : 1.0;
+      return {
+        ...prev,
+        currentRaceIndex: 0,
+        seasonHistory: [],
+        difficultyMultiplier: nextDifficulty
+      };
+    });
     setShowSeasonFinale(false);
     setActiveTab('dashboard');
   };
@@ -343,18 +386,26 @@ const App: React.FC = () => {
   if (showModeSelector) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.1),transparent_50%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,210,190,0.1),transparent_50%)]" />
-        <div className="max-w-6xl w-full z-10 space-y-16">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.15),transparent_60%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,210,190,0.1),transparent_60%)]" />
+        <div className="max-w-6xl w-full z-10 space-y-12">
           <div className="text-center space-y-4">
-            <TeamManagerLogo className="w-24 h-24 mx-auto text-red-500 animate-fade" />
+            <TeamManagerLogo className="w-20 h-20 mx-auto text-red-500 animate-fade" />
             <h1 className="text-6xl font-f1 font-bold text-white italic tracking-tighter uppercase">F1 Tycoon <span className="text-red-600">Manager</span></h1>
-            <p className="text-slate-500 font-bold uppercase tracking-[0.4em] text-xs">FIA Official Strategic Simulator</p>
+            <p className="text-slate-500 font-bold uppercase tracking-[0.4em] text-xs">Official Pro Simulation Engine</p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <ModeCard onClick={() => handleStartGame('single')} icon={<User size={48} />} title="Single Player" desc="Construye tu leyenda desde cero." accent="border-red-600/30 hover:border-red-600" />
-            <ModeCard onClick={() => handleStartGame('versus')} icon={<Users size={48} />} title="Local Versus" desc="Compite contra un amigo por turnos." accent="border-cyan-500/30 hover:border-cyan-500" />
-            <ModeCard onClick={() => handleStartGame('online')} icon={<Globe size={48} />} title="Online Paddock" desc="Únete al Paddock Global." accent="border-blue-500/30 hover:border-blue-500" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <ModeCard onClick={() => handleStartGame('single')} icon={<User size={40} />} title="Single Player" desc="Construye tu leyenda." accent="border-slate-800 hover:border-red-600" />
+            <ModeCard onClick={() => handleStartGame('versus')} icon={<Users size={40} />} title="Versus Local" desc="2 Jugadores / 1 Pantalla." accent="border-slate-800 hover:border-cyan-500" />
+            <ModeCard 
+              onClick={() => gameState.competitiveUnlocked && handleStartGame('competitive')} 
+              icon={gameState.competitiveUnlocked ? <Zap size={40} className="text-yellow-500" /> : <Lock size={40} />} 
+              title="Competitivo" 
+              desc={gameState.competitiveUnlocked ? "Dificultad +10% cada año." : `Bloqueado: Gana 2 mundiales seguidos (${gameState.consecutiveWdcWins}/2)`} 
+              accent={gameState.competitiveUnlocked ? "border-yellow-600/50 hover:border-yellow-500 shadow-yellow-900/10" : "opacity-50 grayscale cursor-not-allowed"} 
+              locked={!gameState.competitiveUnlocked}
+            />
+            <ModeCard onClick={() => handleStartGame('online')} icon={<Globe size={40} />} title="Online" desc="Paddock Global." accent="border-slate-800 hover:border-blue-500" />
           </div>
         </div>
       </div>
@@ -372,8 +423,7 @@ const App: React.FC = () => {
         onReset={() => {
            if(confirm("¿Borrar todos los datos?")) {
               localStorage.removeItem(SAVE_KEY);
-              setGameState({ mode: 'single', teams: [createInitialTeam(0, "Tu Escudería", "red", INITIAL_FUNDS)], currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [], stocks: INITIAL_STOCKS });
-              setShowModeSelector(true);
+              window.location.reload();
            }
         }} 
         onSave={handleSaveGame}
@@ -389,7 +439,7 @@ const App: React.FC = () => {
               onRenameTeam={(n) => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, name: n} : t)}))} 
               onToggleActive={(id) => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, activeDriverIds: t.activeDriverIds.includes(id) ? t.activeDriverIds.filter(x => x !== id) : (t.activeDriverIds.length < 2 ? [...t.activeDriverIds, id] : t.activeDriverIds)} : t)}))} 
               onResetSeason={() => {}} 
-              isVersus={gameState.mode !== 'single'} 
+              isVersus={gameState.mode !== 'single' && gameState.mode !== 'competitive'} 
             />
           )}
           {activeTab === 'market' && <Market team={currentTeam} onHireDriver={handleHireDriver} onSellDriver={handleSellDriver} />}
@@ -403,7 +453,9 @@ const App: React.FC = () => {
                <div className="flex justify-between items-end">
                  <div>
                    <h2 className="text-4xl font-f1 font-bold italic tracking-tighter uppercase">GP {gameState.currentRaceIndex} / {MAX_RACES_PER_SEASON}</h2>
-                   <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Resultados FIA</p>
+                   <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">
+                     Resultados FIA {gameState.mode === 'competitive' && `(Dificultad: x${gameState.difficultyMultiplier.toFixed(2)})`}
+                   </p>
                  </div>
                  <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
                     <button onClick={() => setSeasonTab('wdc')} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest ${seasonTab === 'wdc' ? 'bg-red-600 text-white' : 'text-slate-500'}`}>WDC</button>
@@ -429,7 +481,7 @@ const App: React.FC = () => {
                     </table>
                  </div>
                ) : (
-                 <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
+                 <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden">
                    <table className="w-full text-left">
                      <thead className="bg-slate-950/50 border-b border-slate-800 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]"><tr ><th className="px-10 py-8">Gran Premio</th>{gameState.teams.map(t => (<th key={t.id} className={`px-10 py-8 ${t.color === 'cyan' ? 'text-cyan-400' : 'text-red-600'}`}>{t.name}</th>))}</tr></thead>
                      <tbody className="divide-y divide-slate-800/50">
@@ -450,18 +502,26 @@ const App: React.FC = () => {
           )}
         </div>
       </main>
-      {isRacing && <RaceSimulation teams={gameState.teams} currentRaceIndex={gameState.currentRaceIndex} onFinish={handleFinishRace} isHost={gameState.isHost || gameState.mode !== 'online'} roomCode={gameState.roomCode} />}
+      {isRacing && <RaceSimulation teams={gameState.teams} currentRaceIndex={gameState.currentRaceIndex} onFinish={handleFinishRace} isHost={gameState.isHost || gameState.mode !== 'online'} roomCode={gameState.roomCode} difficultyMultiplier={gameState.difficultyMultiplier} />}
       {showSeasonFinale && <SeasonFinale standings={driverStandings} onRestartSeason={handleRestartSeason} onFullReset={() => setShowModeSelector(true)} />}
       {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} onStepChange={setActiveTab} />}
     </div>
   );
 };
 
-const ModeCard = ({ onClick, icon, title, desc, accent }: any) => (
-  <button onClick={onClick} className={`group bg-slate-900/40 backdrop-blur-3xl border-2 ${accent} p-12 rounded-[3rem] transition-all hover:-translate-y-4 flex flex-col items-center text-center space-y-8 shadow-2xl relative overflow-hidden`}>
-    <div className="p-8 bg-slate-950/80 rounded-[2rem] text-white border border-slate-800 group-hover:scale-110 transition-transform duration-500 group-hover:text-red-500">{icon}</div>
-    <div className="relative z-10"><h2 className="text-3xl font-f1 font-bold mb-3 uppercase tracking-tighter italic text-white">{title}</h2><p className="text-slate-500 text-sm font-medium leading-relaxed italic px-4 group-hover:text-slate-300 transition-colors">{desc}</p></div>
-    <div className="absolute inset-0 bg-gradient-to-t from-red-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+const ModeCard = ({ onClick, icon, title, desc, accent, locked }: any) => (
+  <button 
+    onClick={onClick} 
+    className={`group bg-slate-900/40 backdrop-blur-3xl border-2 ${accent} p-8 rounded-[2.5rem] transition-all flex flex-col items-center text-center space-y-6 relative overflow-hidden ${!locked && 'hover:-translate-y-2 hover:bg-slate-900/60'}`}
+  >
+    <div className={`p-6 bg-slate-950/80 rounded-2xl text-white border border-slate-800 group-hover:scale-110 transition-transform duration-500`}>
+      {icon}
+    </div>
+    <div>
+      <h2 className="text-xl font-f1 font-bold mb-2 uppercase tracking-tighter italic text-white">{title}</h2>
+      <p className="text-slate-500 text-[10px] font-bold leading-relaxed uppercase tracking-widest">{desc}</p>
+    </div>
+    {!locked && <div className="absolute inset-0 bg-gradient-to-t from-red-600/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />}
   </button>
 );
 

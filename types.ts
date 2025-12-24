@@ -40,8 +40,8 @@ export interface Stock {
   name: string;
   symbol: string;
   price: number;
-  volatility: number; // 0 a 1
-  trend: number; // Cambio porcentual último
+  volatility: number;
+  trend: number;
   category: string;
 }
 
@@ -82,15 +82,19 @@ export interface TeamState {
 }
 
 export interface GameState {
-  mode: 'single' | 'versus' | 'online';
+  mode: 'single' | 'versus' | 'online' | 'competitive';
   teams: TeamState[];
   currentPlayerIndex: number;
   currentRaceIndex: number;
   seasonHistory: RaceResult[];
-  stocks: Stock[]; // La bolsa es global para la partida
+  stocks: Stock[];
   roomCode?: string;
   isHost?: boolean;
   onlineOpponentReady?: boolean;
+  // Propiedades de progresión
+  consecutiveWdcWins: number;
+  competitiveUnlocked: boolean;
+  difficultyMultiplier: number;
 }
 
 export interface RaceResult {
