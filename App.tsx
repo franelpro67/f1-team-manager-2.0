@@ -193,7 +193,7 @@ const App: React.FC = () => {
         mode: 'competitive',
         currentRaceIndex: 0,
         seasonHistory: [],
-        difficultyMultiplier: 1.1 
+        difficultyMultiplier: 1.02 // Inicia con un 2% de dificultad base
       }));
       setShowModeSelector(false);
       setShowSeasonFinale(false);
@@ -259,7 +259,6 @@ const App: React.FC = () => {
     });
 
     if (gameState.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON) {
-      // Calculamos standings actuales para verificar ganador
       const currentWinner = driverStandings[0];
       const playerWon = gameState.teams[0].drivers.some(d => d.name === currentWinner?.name);
 
@@ -281,7 +280,8 @@ const App: React.FC = () => {
 
   const handleRestartSeason = () => {
     setGameState(prev => {
-      const nextDifficulty = prev.mode === 'competitive' ? prev.difficultyMultiplier * 1.1 : 1.0;
+      // Dificultad aumenta un 2% cada temporada en modo competitivo
+      const nextDifficulty = prev.mode === 'competitive' ? prev.difficultyMultiplier * 1.02 : 1.0;
       return {
         ...prev,
         currentRaceIndex: 0,
@@ -405,7 +405,7 @@ const App: React.FC = () => {
               onClick={() => gameState.competitiveUnlocked && handleStartGame('competitive')} 
               icon={gameState.competitiveUnlocked ? <Zap size={40} className="text-yellow-500" /> : <Lock size={40} />} 
               title="Competitivo" 
-              desc={gameState.competitiveUnlocked ? "Dificultad +10%. Req: Top 5." : `Bloqueado: Gana 2 mundiales seguidos (${gameState.consecutiveWdcWins}/2)`} 
+              desc={gameState.competitiveUnlocked ? "Dificultad +2%. Req: Top 5." : `Bloqueado: Gana 2 mundiales seguidos (${gameState.consecutiveWdcWins}/2)`} 
               accent={gameState.competitiveUnlocked ? "border-yellow-600/50 hover:border-yellow-500 shadow-yellow-900/10" : "opacity-50 grayscale cursor-not-allowed"} 
               locked={!gameState.competitiveUnlocked}
             />
