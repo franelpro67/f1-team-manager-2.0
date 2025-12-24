@@ -188,13 +188,12 @@ const App: React.FC = () => {
     }
 
     if (mode === 'competitive') {
-      // Inicia con el equipo actual pero dificultad aumentada
       setGameState(prev => ({
         ...prev,
         mode: 'competitive',
         currentRaceIndex: 0,
         seasonHistory: [],
-        difficultyMultiplier: 1.1 // Dificultad base competitiva +10%
+        difficultyMultiplier: 1.1 
       }));
       setShowModeSelector(false);
       setActiveTab('dashboard');
@@ -259,7 +258,6 @@ const App: React.FC = () => {
     });
 
     if (gameState.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON) {
-      // Fin de temporada: Verificar Campeón
       const winner = driverStandings[0];
       const teamOfWinner = gameState.teams.find(t => t.drivers.some(d => d.name === winner?.name));
       const playerWon = teamOfWinner?.id === 0;
@@ -282,7 +280,6 @@ const App: React.FC = () => {
 
   const handleRestartSeason = () => {
     setGameState(prev => {
-      // Si estamos en modo competitivo, la dificultad aumenta un 10% cada temporada
       const nextDifficulty = prev.mode === 'competitive' ? prev.difficultyMultiplier * 1.1 : 1.0;
       return {
         ...prev,
@@ -383,6 +380,12 @@ const App: React.FC = () => {
     });
   };
 
+  const canAdvanceCompetitive = useMemo(() => {
+    if (gameState.mode !== 'competitive') return true;
+    const playerDrivers = gameState.teams[0].drivers.map(d => d.name);
+    return driverStandings.slice(0, 5).some(d => playerDrivers.includes(d.name));
+  }, [gameState.mode, gameState.teams, driverStandings]);
+
   if (showModeSelector) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
@@ -401,7 +404,7 @@ const App: React.FC = () => {
               onClick={() => gameState.competitiveUnlocked && handleStartGame('competitive')} 
               icon={gameState.competitiveUnlocked ? <Zap size={40} className="text-yellow-500" /> : <Lock size={40} />} 
               title="Competitivo" 
-              desc={gameState.competitiveUnlocked ? "Dificultad +10% cada año." : `Bloqueado: Gana 2 mundiales seguidos (${gameState.consecutiveWdcWins}/2)`} 
+              desc={gameState.competitiveUnlocked ? "Dificultad +10%. Req: Top 5." : `Bloqueado: Gana 2 mundiales seguidos (${gameState.consecutiveWdcWins}/2)`} 
               accent={gameState.competitiveUnlocked ? "border-yellow-600/50 hover:border-yellow-500 shadow-yellow-900/10" : "opacity-50 grayscale cursor-not-allowed"} 
               locked={!gameState.competitiveUnlocked}
             />
@@ -503,7 +506,7 @@ const App: React.FC = () => {
         </div>
       </main>
       {isRacing && <RaceSimulation teams={gameState.teams} currentRaceIndex={gameState.currentRaceIndex} onFinish={handleFinishRace} isHost={gameState.isHost || gameState.mode !== 'online'} roomCode={gameState.roomCode} difficultyMultiplier={gameState.difficultyMultiplier} />}
-      {showSeasonFinale && <SeasonFinale standings={driverStandings} onRestartSeason={handleRestartSeason} onFullReset={() => setShowModeSelector(true)} />}
+      {showSeasonFinale && <SeasonFinale mode={gameState.mode} canAdvanceCompetitive={canAdvanceCompetitive} standings={driverStandings} onRestartSeason={handleRestartSeason} onFullReset={() => setShowModeSelector(true)} />}
       {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} onStepChange={setActiveTab} />}
     </div>
   );
