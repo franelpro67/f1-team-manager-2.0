@@ -11,7 +11,7 @@ import Sponsors from './components/Sponsors.tsx';
 import RaceSimulation from './components/RaceSimulation.tsx';
 import SeasonFinale from './components/SeasonFinale.tsx';
 import Tutorial from './components/Tutorial.tsx';
-import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment } from './types.ts';
+import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment, Engineer } from './types.ts';
 import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS, INITIAL_STOCKS } from './constants.tsx';
 import { Users, User, Globe, Search, Send, Play, Star, Shield, LayoutDashboard, Flag } from 'lucide-react';
 import * as OnlineService from './services/onlineService.ts';
@@ -19,9 +19,6 @@ import * as OnlineService from './services/onlineService.ts';
 const MAX_RACES_PER_SEASON = 10;
 const SAVE_KEY = 'f1_tycoon_persistent_v1';
 
-/**
- * Logo de Escudería Profesional
- */
 export const TeamManagerLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -114,10 +111,76 @@ const App: React.FC = () => {
     });
   }, [gameState.seasonHistory]);
 
+  const handleHireDriver = useCallback((driver: Driver) => {
+    setGameState(prev => {
+      const updatedTeams = prev.teams.map((t, i) => {
+        if (i !== prev.currentPlayerIndex) return t;
+        if (t.funds < driver.cost || t.drivers.length >= 4) return t;
+        return {
+          ...t,
+          funds: t.funds - driver.cost,
+          drivers: [...t.drivers, driver],
+          activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, driver.id] : t.activeDriverIds
+        };
+      });
+      return { ...prev, teams: updatedTeams };
+    });
+  }, []);
+
+  const handleSellDriver = useCallback((driverId: string) => {
+    setGameState(prev => {
+      const updatedTeams = prev.teams.map((t, i) => {
+        if (i !== prev.currentPlayerIndex) return t;
+        const driverToSell = t.drivers.find(d => d.id === driverId);
+        if (!driverToSell) return t;
+        
+        const refund = driverToSell.cost * 0.8;
+        return {
+          ...t,
+          funds: t.funds + refund,
+          drivers: t.drivers.filter(d => d.id !== driverId),
+          activeDriverIds: t.activeDriverIds.filter(id => id !== driverId)
+        };
+      });
+      return { ...prev, teams: updatedTeams };
+    });
+  }, []);
+
+  const handleHireEngineer = useCallback((engineer: Engineer) => {
+    setGameState(prev => {
+      const updatedTeams = prev.teams.map((t, i) => {
+        if (i !== prev.currentPlayerIndex) return t;
+        if (t.funds < engineer.cost || t.engineers.length >= 3) return t;
+        return {
+          ...t,
+          funds: t.funds - engineer.cost,
+          engineers: [...t.engineers, engineer]
+        };
+      });
+      return { ...prev, teams: updatedTeams };
+    });
+  }, []);
+
+  const handleFireEngineer = useCallback((engineerId: string) => {
+    setGameState(prev => {
+      const updatedTeams = prev.teams.map((t, i) => {
+        if (i !== prev.currentPlayerIndex) return t;
+        const engToFire = t.engineers.find(e => e.id === engineerId);
+        if (!engToFire) return t;
+        const refund = engToFire.cost * 0.8;
+        return {
+          ...t,
+          funds: t.funds + refund,
+          engineers: t.engineers.filter(e => e.id !== engineerId)
+        };
+      });
+      return { ...prev, teams: updatedTeams };
+    });
+  }, []);
+
   const handleStartGame = (mode: 'single' | 'versus' | 'online') => {
     if (mode === 'online') {
       setIsSearching(true);
-      // Simulación de búsqueda online para este demo
       setTimeout(() => {
         setIsSearching(false);
         alert("Paddock Global no disponible en este momento. Prueba el modo Single Player.");
@@ -277,53 +340,22 @@ const App: React.FC = () => {
     });
   };
 
-  /**
-   * PANTALLA DE SELECCIÓN DE MODO (RENDERIZADO INICIAL Y RESET)
-   */
   if (showModeSelector) {
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
-        {/* Background Effects */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.1),transparent_50%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,210,190,0.1),transparent_50%)]" />
-        
         <div className="max-w-6xl w-full z-10 space-y-16">
           <div className="text-center space-y-4">
             <TeamManagerLogo className="w-24 h-24 mx-auto text-red-500 animate-fade" />
             <h1 className="text-6xl font-f1 font-bold text-white italic tracking-tighter uppercase">F1 Tycoon <span className="text-red-600">Manager</span></h1>
             <p className="text-slate-500 font-bold uppercase tracking-[0.4em] text-xs">FIA Official Strategic Simulator</p>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <ModeCard 
-              onClick={() => handleStartGame('single')}
-              icon={<User size={48} />}
-              title="Single Player"
-              desc="Construye tu leyenda desde cero. Gana el WDC contra la IA."
-              accent="border-red-600/30 hover:border-red-600"
-            />
-            <ModeCard 
-              onClick={() => handleStartGame('versus')}
-              icon={<Users size={48} />}
-              title="Local Versus"
-              desc="Compite contra un amigo en el mismo dispositivo por turnos."
-              accent="border-cyan-500/30 hover:border-cyan-500"
-            />
-            <ModeCard 
-              onClick={() => handleStartGame('online')}
-              icon={<Globe size={48} />}
-              title="Online Paddock"
-              desc="Únete al Paddock Global y desafía a managers de todo el mundo."
-              accent="border-blue-500/30 hover:border-blue-500"
-            />
+            <ModeCard onClick={() => handleStartGame('single')} icon={<User size={48} />} title="Single Player" desc="Construye tu leyenda desde cero." accent="border-red-600/30 hover:border-red-600" />
+            <ModeCard onClick={() => handleStartGame('versus')} icon={<Users size={48} />} title="Local Versus" desc="Compite contra un amigo por turnos." accent="border-cyan-500/30 hover:border-cyan-500" />
+            <ModeCard onClick={() => handleStartGame('online')} icon={<Globe size={48} />} title="Online Paddock" desc="Únete al Paddock Global." accent="border-blue-500/30 hover:border-blue-500" />
           </div>
-
-          {isSearching && (
-            <div className="flex flex-col items-center gap-4 animate-pulse">
-               <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-               <p className="text-blue-500 font-black uppercase text-[10px] tracking-widest">Buscando Sesión Online...</p>
-            </div>
-          )}
         </div>
       </div>
     );
@@ -338,19 +370,9 @@ const App: React.FC = () => {
         setActiveTab={setActiveTab} 
         teamColor={currentTeam.color} 
         onReset={() => {
-           if(confirm("¿Estás seguro de que quieres borrar todos los datos? Esta acción es irreversible.")) {
-              // Limpiar datos
+           if(confirm("¿Borrar todos los datos?")) {
               localStorage.removeItem(SAVE_KEY);
-              // Forzar estado inicial para evitar errores de renderizado
-              setGameState({
-                mode: 'single',
-                teams: [createInitialTeam(0, "Tu Escudería", "red", INITIAL_FUNDS)],
-                currentPlayerIndex: 0,
-                currentRaceIndex: 0,
-                seasonHistory: [],
-                stocks: INITIAL_STOCKS
-              });
-              // Mostrar selector de modo
+              setGameState({ mode: 'single', teams: [createInitialTeam(0, "Tu Escudería", "red", INITIAL_FUNDS)], currentPlayerIndex: 0, currentRaceIndex: 0, seasonHistory: [], stocks: INITIAL_STOCKS });
               setShowModeSelector(true);
            }
         }} 
@@ -370,61 +392,39 @@ const App: React.FC = () => {
               isVersus={gameState.mode !== 'single'} 
             />
           )}
-          {activeTab === 'market' && (
-            <Market 
-              team={currentTeam} 
-              onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} 
-              onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.8, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} 
-            />
-          )}
+          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={handleHireDriver} onSellDriver={handleSellDriver} />}
           {activeTab === 'training' && <Training team={currentTeam} onTrainDriver={handleTrainDriver} />}
           {activeTab === 'economy' && <Economy team={currentTeam} stocks={gameState.stocks} onBuyStock={handleBuyStock} onSellStock={handleSellStock} />}
-          {activeTab === 'engineering' && (
-            <Engineering 
-              team={currentTeam} 
-              onHireEngineer={e => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - e.cost, engineers: [...t.engineers, e]} : t)}))} 
-              onFireEngineer={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.engineers.find(e => e.id === id)?.cost || 0) * 0.8, engineers: t.engineers.filter(x => x.id !== id)} : t)}))} 
-            />
-          )}
+          {activeTab === 'engineering' && <Engineering team={currentTeam} onHireEngineer={handleHireEngineer} onFireEngineer={handleFireEngineer} />}
           {activeTab === 'factory' && <Factory team={currentTeam} onUpgrade={(p, c) => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - c, car: {...t.car, [p]: t.car[p] + 1}} : t)}))} />}
           {activeTab === 'sponsors' && <Sponsors team={currentTeam} onAcceptSponsor={handleAcceptSponsor} onRejectSponsor={handleRejectSponsor} onCancelActive={handleCancelSponsor} />}
           {activeTab === 'season' && (
-             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+             <div className="space-y-6">
                <div className="flex justify-between items-end">
                  <div>
                    <h2 className="text-4xl font-f1 font-bold italic tracking-tighter uppercase">GP {gameState.currentRaceIndex} / {MAX_RACES_PER_SEASON}</h2>
-                   <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Resultados Oficiales FIA</p>
+                   <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">Resultados FIA</p>
                  </div>
                  <div className="flex bg-slate-900 p-1 rounded-xl border border-slate-800">
-                    <button onClick={() => setSeasonTab('wdc')} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${seasonTab === 'wdc' ? 'bg-red-600 text-white' : 'text-slate-500 hover:text-white'}`}>Mundial Pilotos (WDC)</button>
-                    <button onClick={() => setSeasonTab('wcc')} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest transition-all ${seasonTab === 'wcc' ? 'bg-red-600 text-white' : 'text-slate-500 hover:text-white'}`}>Mundial Constructores (WCC)</button>
+                    <button onClick={() => setSeasonTab('wdc')} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest ${seasonTab === 'wdc' ? 'bg-red-600 text-white' : 'text-slate-500'}`}>WDC</button>
+                    <button onClick={() => setSeasonTab('wcc')} className={`px-6 py-2 rounded-lg text-xs font-black uppercase tracking-widest ${seasonTab === 'wcc' ? 'bg-red-600 text-white' : 'text-slate-500'}`}>WCC</button>
                  </div>
                </div>
                {seasonTab === 'wdc' ? (
-                 <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
+                 <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden">
                     <table className="w-full text-left">
                       <thead className="bg-slate-950/50 border-b border-slate-800 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]">
                         <tr><th className="px-10 py-6">Pos</th><th className="px-10 py-6">Piloto</th><th className="px-10 py-6">Escudería</th><th className="px-10 py-6 text-right">Puntos</th></tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/50">
-                        {driverStandings.map((d, i) => {
-                          const isYourDriver = currentTeam.drivers.some(td => td.name === d.name);
-                          const badgeClass = currentTeam.color === 'cyan' ? 'bg-cyan-500 text-white' : 'bg-red-600 text-white';
-                          return (
-                            <tr key={d.name} className={`hover:bg-slate-800/20 transition-colors ${isYourDriver ? 'bg-red-600/5 relative' : i < 3 ? 'bg-slate-800/10' : ''}`}>
-                              <td className="px-10 py-6 font-f1 text-lg"><span className={i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-500' : 'text-slate-500'}>{i + 1}</span></td>
-                              <td className="px-10 py-6 font-bold text-white flex items-center gap-3">
-                                <span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">{d.name.substring(0,2)}</span> 
-                                <div className="flex flex-col">
-                                  <span>{d.name}</span>
-                                  {isYourDriver && <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-widest w-fit mt-1 shadow-lg ${badgeClass}`}>TU EQUIPO</span>}
-                                </div>
-                              </td>
-                              <td className="px-10 py-6 text-slate-400 text-xs font-bold uppercase italic">{d.team}</td>
-                              <td className="px-10 py-6 text-right font-f1 text-xl text-red-500">{d.points}</td>
-                            </tr>
-                          );
-                        })}
+                      <tbody>
+                        {driverStandings.map((d, i) => (
+                          <tr key={d.name} className="hover:bg-slate-800/20 border-b border-slate-800/50">
+                            <td className="px-10 py-6 font-f1 text-lg">{i + 1}</td>
+                            <td className="px-10 py-6 font-bold text-white">{d.name}</td>
+                            <td className="px-10 py-6 text-slate-400 text-xs italic">{d.team}</td>
+                            <td className="px-10 py-6 text-right font-f1 text-xl text-red-500">{d.points}</td>
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                  </div>
@@ -438,7 +438,7 @@ const App: React.FC = () => {
                            <td className="px-10 py-8 font-bold text-white uppercase tracking-tight italic">{race.raceName}</td>
                            {gameState.teams.map(t => {
                              const res = race.teamResults.find(r => r.teamId === t.id);
-                             return (<td key={t.id} className="px-10 py-8"><div className="flex items-center gap-4"><span className="font-f1 text-sm text-slate-400">P{res?.driver1Position} / P{res?.driver2Position}</span><span className={`text-[10px] font-black px-3 py-1.5 rounded-lg bg-green-500/10 text-green-400 uppercase`}>+{res?.points} PTS</span></div></td>);
+                             return (<td key={t.id} className="px-10 py-8"><span className="font-f1 text-sm text-slate-400">P{res?.driver1Position} / P{res?.driver2Position}</span></td>);
                            })}
                          </tr>
                        ))}
