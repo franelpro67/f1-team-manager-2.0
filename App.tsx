@@ -13,14 +13,14 @@ import SeasonFinale from './components/SeasonFinale.tsx';
 import Tutorial from './components/Tutorial.tsx';
 import { GameState, TeamState, RaceResult, Sponsor, TeamResult, RaceStrategy, Driver, Stock, Investment } from './types.ts';
 import { INITIAL_FUNDS, VERSUS_FUNDS, AVAILABLE_SPONSORS, INITIAL_STOCKS } from './constants.tsx';
-import { Users, User, Globe, Search, Send, Play, Star, Shield } from 'lucide-react';
+import { Users, User, Globe, Search, Send, Play, Star, Shield, LayoutDashboard, Flag } from 'lucide-react';
 import * as OnlineService from './services/onlineService.ts';
 
 const MAX_RACES_PER_SEASON = 10;
 const SAVE_KEY = 'f1_tycoon_persistent_v1';
 
 /**
- * Logo de Escudería Profesional: Un escudo dinámico que representa velocidad y prestigio.
+ * Logo de Escudería Profesional
  */
 export const TeamManagerLogo = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className} fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -30,13 +30,9 @@ export const TeamManagerLogo = ({ className }: { className?: string }) => (
         <stop offset="100%" style={{ stopColor: 'currentColor', stopOpacity: 0.6 }} />
       </linearGradient>
     </defs>
-    {/* Forma del Escudo Principal */}
     <path d="M50 5 L85 20 V45 C85 70 50 95 50 95 C50 95 15 70 15 45 V20 L50 5Z" fill="url(#shieldGrad)" />
-    {/* Líneas de Velocidad / Flujo Aero */}
     <path d="M30 30 L70 30 M25 45 L75 45 M35 60 L65 60" stroke="white" strokeWidth="4" strokeLinecap="round" opacity="0.3" />
-    {/* Patrón de Bandera a Cuadros Interno */}
     <path d="M40 25 H50 V35 H40 V25ZM50 35 H60 V45 H50 V35ZM40 45 H50 V55 H40 V45Z" fill="white" opacity="0.8" />
-    {/* Borde de Refuerzo */}
     <path d="M50 8 L82 22 V45 C82 68 50 90 50 90 C50 90 18 68 18 45 V22 L50 8Z" stroke="white" strokeWidth="2" opacity="0.5" />
   </svg>
 );
@@ -69,18 +65,12 @@ const App: React.FC = () => {
   const [showSeasonFinale, setShowSeasonFinale] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [manualCode, setManualCode] = useState('');
-  const [showManualInput, setShowManualInput] = useState(false);
   
   const [gameState, setGameState] = useState<GameState>(() => {
     const saved = localStorage.getItem(SAVE_KEY);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        parsed.teams = parsed.teams.map((t: TeamState) => ({
-          ...t,
-          activeSponsorIds: Array.from(new Set(t.activeSponsorIds || []))
-        }));
         return parsed;
       } catch (e) {
         console.error("Error cargando partida guardada", e);
@@ -118,11 +108,8 @@ const App: React.FC = () => {
         standings[entry.driverName].points += entry.points || 0;
       });
     });
-    // SE CORRIGE LA ORDENACIÓN: De mayor a menor puntos. Si hay empate, por nombre.
     return Object.values(standings).sort((a, b) => {
-      if (b.points !== a.points) {
-        return b.points - a.points;
-      }
+      if (b.points !== a.points) return b.points - a.points;
       return a.name.localeCompare(b.name);
     });
   }, [gameState.seasonHistory]);
@@ -130,6 +117,11 @@ const App: React.FC = () => {
   const handleStartGame = (mode: 'single' | 'versus' | 'online') => {
     if (mode === 'online') {
       setIsSearching(true);
+      // Simulación de búsqueda online para este demo
+      setTimeout(() => {
+        setIsSearching(false);
+        alert("Paddock Global no disponible en este momento. Prueba el modo Single Player.");
+      }, 2000);
     } else {
       const funds = mode === 'single' ? INITIAL_FUNDS : VERSUS_FUNDS;
       const teams = mode === 'single' 
@@ -285,6 +277,58 @@ const App: React.FC = () => {
     });
   };
 
+  /**
+   * PANTALLA DE SELECCIÓN DE MODO (RENDERIZADO INICIAL Y RESET)
+   */
+  if (showModeSelector) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
+        {/* Background Effects */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.1),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_left,rgba(0,210,190,0.1),transparent_50%)]" />
+        
+        <div className="max-w-6xl w-full z-10 space-y-16">
+          <div className="text-center space-y-4">
+            <TeamManagerLogo className="w-24 h-24 mx-auto text-red-500 animate-fade" />
+            <h1 className="text-6xl font-f1 font-bold text-white italic tracking-tighter uppercase">F1 Tycoon <span className="text-red-600">Manager</span></h1>
+            <p className="text-slate-500 font-bold uppercase tracking-[0.4em] text-xs">FIA Official Strategic Simulator</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <ModeCard 
+              onClick={() => handleStartGame('single')}
+              icon={<User size={48} />}
+              title="Single Player"
+              desc="Construye tu leyenda desde cero. Gana el WDC contra la IA."
+              accent="border-red-600/30 hover:border-red-600"
+            />
+            <ModeCard 
+              onClick={() => handleStartGame('versus')}
+              icon={<Users size={48} />}
+              title="Local Versus"
+              desc="Compite contra un amigo en el mismo dispositivo por turnos."
+              accent="border-cyan-500/30 hover:border-cyan-500"
+            />
+            <ModeCard 
+              onClick={() => handleStartGame('online')}
+              icon={<Globe size={48} />}
+              title="Online Paddock"
+              desc="Únete al Paddock Global y desafía a managers de todo el mundo."
+              accent="border-blue-500/30 hover:border-blue-500"
+            />
+          </div>
+
+          {isSearching && (
+            <div className="flex flex-col items-center gap-4 animate-pulse">
+               <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+               <p className="text-blue-500 font-black uppercase text-[10px] tracking-widest">Buscando Sesión Online...</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   const currentTeam = gameState.teams[gameState.currentPlayerIndex];
 
   return (
@@ -294,8 +338,19 @@ const App: React.FC = () => {
         setActiveTab={setActiveTab} 
         teamColor={currentTeam.color} 
         onReset={() => {
-           if(confirm("¿Seguro que quieres borrar tu partida?")) {
+           if(confirm("¿Estás seguro de que quieres borrar todos los datos? Esta acción es irreversible.")) {
+              // Limpiar datos
               localStorage.removeItem(SAVE_KEY);
+              // Forzar estado inicial para evitar errores de renderizado
+              setGameState({
+                mode: 'single',
+                teams: [createInitialTeam(0, "Tu Escudería", "red", INITIAL_FUNDS)],
+                currentPlayerIndex: 0,
+                currentRaceIndex: 0,
+                seasonHistory: [],
+                stocks: INITIAL_STOCKS
+              });
+              // Mostrar selector de modo
               setShowModeSelector(true);
            }
         }} 
@@ -315,7 +370,7 @@ const App: React.FC = () => {
               isVersus={gameState.mode !== 'single'} 
             />
           )}
-          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.8, drivers: t.drivers.filter(x => x.id !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
+          {activeTab === 'market' && <Market team={currentTeam} onHireDriver={d => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds - d.cost, drivers: [...t.drivers, d], activeDriverIds: t.activeDriverIds.length < 2 ? [...t.activeDriverIds, d.id] : t.activeDriverIds} : t)}))} onSellDriver={id => setGameState(prev => ({...prev, teams: prev.teams.map((t, i) => i === prev.currentPlayerIndex ? {...t, funds: t.funds + (t.drivers.find(x => x.id === id)?.cost || 0)*0.8, drivers: t.drivers.filter(x => x !== id), activeDriverIds: t.activeDriverIds.filter(x => x !== id)} : t)}))} />}
           {activeTab === 'training' && <Training team={currentTeam} onTrainDriver={handleTrainDriver} />}
           {activeTab === 'economy' && <Economy team={currentTeam} stocks={gameState.stocks} onBuyStock={handleBuyStock} onSellStock={handleSellStock} />}
           {activeTab === 'engineering' && (
@@ -348,29 +403,19 @@ const App: React.FC = () => {
                       <tbody className="divide-y divide-slate-800/50">
                         {driverStandings.map((d, i) => {
                           const isYourDriver = currentTeam.drivers.some(td => td.name === d.name);
-                          const accentClass = currentTeam.color === 'cyan' ? 'border-cyan-500/30 bg-cyan-500/5' : 'border-red-600/30 bg-red-600/5';
                           const badgeClass = currentTeam.color === 'cyan' ? 'bg-cyan-500 text-white' : 'bg-red-600 text-white';
                           return (
-                            <tr key={d.name} className={`hover:bg-slate-800/20 transition-colors ${isYourDriver ? `${accentClass} relative` : i < 3 ? 'bg-slate-800/10' : ''}`}>
+                            <tr key={d.name} className={`hover:bg-slate-800/20 transition-colors ${isYourDriver ? 'bg-red-600/5 relative' : i < 3 ? 'bg-slate-800/10' : ''}`}>
                               <td className="px-10 py-6 font-f1 text-lg"><span className={i === 0 ? 'text-yellow-500' : i === 1 ? 'text-slate-300' : i === 2 ? 'text-orange-500' : 'text-slate-500'}>{i + 1}</span></td>
                               <td className="px-10 py-6 font-bold text-white flex items-center gap-3">
                                 <span className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-[10px] border border-slate-700">{d.name.substring(0,2)}</span> 
                                 <div className="flex flex-col">
                                   <span>{d.name}</span>
-                                  {isYourDriver && (
-                                    <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-widest w-fit mt-1 shadow-lg ${badgeClass}`}>
-                                      TU EQUIPO
-                                    </span>
-                                  )}
+                                  {isYourDriver && <span className={`text-[8px] px-1.5 py-0.5 rounded uppercase font-black tracking-widest w-fit mt-1 shadow-lg ${badgeClass}`}>TU EQUIPO</span>}
                                 </div>
                               </td>
                               <td className="px-10 py-6 text-slate-400 text-xs font-bold uppercase italic">{d.team}</td>
-                              <td className="px-10 py-6 text-right font-f1 text-xl text-red-500">
-                                <div className="flex items-center justify-end gap-2">
-                                  {isYourDriver && <Star size={12} className="text-yellow-500 fill-yellow-500" />}
-                                  {d.points}
-                                </div>
-                              </td>
+                              <td className="px-10 py-6 text-right font-f1 text-xl text-red-500">{d.points}</td>
                             </tr>
                           );
                         })}
@@ -380,7 +425,7 @@ const App: React.FC = () => {
                ) : (
                  <div className="bg-slate-900 border border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
                    <table className="w-full text-left">
-                     <thead className="bg-slate-950/50 border-b border-slate-800"><tr className="text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]"><th className="px-10 py-8">Gran Premio</th>{gameState.teams.map(t => (<th key={t.id} className={`px-10 py-8 ${t.color === 'cyan' ? 'text-cyan-400' : 'text-red-600'}`}>{t.name}</th>))}</tr></thead>
+                     <thead className="bg-slate-950/50 border-b border-slate-800 text-slate-500 text-[10px] font-black uppercase tracking-[0.3em]"><tr ><th className="px-10 py-8">Gran Premio</th>{gameState.teams.map(t => (<th key={t.id} className={`px-10 py-8 ${t.color === 'cyan' ? 'text-cyan-400' : 'text-red-600'}`}>{t.name}</th>))}</tr></thead>
                      <tbody className="divide-y divide-slate-800/50">
                        {gameState.seasonHistory.map((race, i) => (
                          <tr key={i} className="hover:bg-slate-800/20 transition-colors">
@@ -406,11 +451,11 @@ const App: React.FC = () => {
   );
 };
 
-const ModeCard = ({ onClick, icon, title, desc, accent = "border-slate-800 hover:border-red-600" }: any) => (
-  <button onClick={onClick} className={`group bg-slate-900/60 backdrop-blur-2xl border-2 ${accent} p-14 rounded-[3rem] transition-all hover:-translate-y-4 flex flex-col items-center text-center space-y-10 shadow-2xl relative overflow-hidden`}>
-    <div className="p-10 bg-slate-950/90 rounded-[2.5rem] group-hover:bg-red-600/50 transition-all text-white border border-slate-800/60 group-hover:border-red-600/80 shadow-inner group-hover:shadow-red-600/30 group-hover:scale-110 duration-500">{icon}</div>
-    <div className="relative z-10"><h2 className="text-3xl font-f1 font-bold mb-4 uppercase tracking-tighter italic text-white group-hover:text-red-500 transition-colors">{title}</h2><p className="text-slate-400 text-sm font-medium leading-relaxed italic group-hover:text-slate-100 transition-colors px-4">{desc}</p></div>
-    <div className="absolute inset-0 bg-gradient-to-t from-red-600/25 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+const ModeCard = ({ onClick, icon, title, desc, accent }: any) => (
+  <button onClick={onClick} className={`group bg-slate-900/40 backdrop-blur-3xl border-2 ${accent} p-12 rounded-[3rem] transition-all hover:-translate-y-4 flex flex-col items-center text-center space-y-8 shadow-2xl relative overflow-hidden`}>
+    <div className="p-8 bg-slate-950/80 rounded-[2rem] text-white border border-slate-800 group-hover:scale-110 transition-transform duration-500 group-hover:text-red-500">{icon}</div>
+    <div className="relative z-10"><h2 className="text-3xl font-f1 font-bold mb-3 uppercase tracking-tighter italic text-white">{title}</h2><p className="text-slate-500 text-sm font-medium leading-relaxed italic px-4 group-hover:text-slate-300 transition-colors">{desc}</p></div>
+    <div className="absolute inset-0 bg-gradient-to-t from-red-600/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
   </button>
 );
 
