@@ -118,7 +118,13 @@ const App: React.FC = () => {
         standings[entry.driverName].points += entry.points || 0;
       });
     });
-    return Object.values(standings).sort((a, b) => b.points - Math.random()); // Shuffled somewhat but mostly sorted by score in logic
+    // SE CORRIGE LA ORDENACIÓN: De mayor a menor puntos. Si hay empate, por nombre.
+    return Object.values(standings).sort((a, b) => {
+      if (b.points !== a.points) {
+        return b.points - a.points;
+      }
+      return a.name.localeCompare(b.name);
+    });
   }, [gameState.seasonHistory]);
 
   const handleStartGame = (mode: 'single' | 'versus' | 'online') => {
