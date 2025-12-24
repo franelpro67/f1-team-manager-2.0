@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Trophy, Crown, Star, RotateCcw, Play, AlertCircle, ShieldAlert } from 'lucide-react';
+import { Trophy, Crown, Star, RotateCcw, Play, AlertCircle, ShieldAlert, Zap } from 'lucide-react';
 import { TeamResult } from '../types';
 
 interface SeasonFinaleProps {
@@ -9,13 +9,24 @@ interface SeasonFinaleProps {
   standings: { name: string, team: string, points: number }[];
   onRestartSeason: () => void;
   onFullReset: () => void;
+  onStartCompetitive?: () => void;
+  consecutiveWins: number;
 }
 
-const SeasonFinale: React.FC<SeasonFinaleProps> = ({ mode, canAdvanceCompetitive, standings, onRestartSeason, onFullReset }) => {
+const SeasonFinale: React.FC<SeasonFinaleProps> = ({ 
+  mode, 
+  canAdvanceCompetitive, 
+  standings, 
+  onRestartSeason, 
+  onFullReset,
+  onStartCompetitive,
+  consecutiveWins
+}) => {
   const champion = standings[0];
   const podium = standings.slice(0, 3);
   const isCompetitive = mode === 'competitive';
   const failedCompetitive = isCompetitive && !canAdvanceCompetitive;
+  const showCompetitiveButton = consecutiveWins >= 2 && mode !== 'competitive';
 
   return (
     <div className="fixed inset-0 bg-slate-950 z-[200] overflow-y-auto animate-in fade-in duration-1000">
@@ -32,6 +43,18 @@ const SeasonFinale: React.FC<SeasonFinaleProps> = ({ mode, canAdvanceCompetitive
           </h1>
           <p className="text-slate-500 font-black uppercase tracking-[0.5em] text-xs">FIA Formula 1 World Championship</p>
         </div>
+
+        {/* Competitive Unlock Notification */}
+        {showCompetitiveButton && (
+          <div className="mb-12 animate-pulse bg-yellow-500/20 border-2 border-yellow-500 p-6 rounded-[2rem] text-center shadow-[0_0_30px_rgba(234,179,8,0.2)]">
+            <div className="flex items-center justify-center gap-3 text-yellow-500 mb-2">
+              <Zap size={24} fill="currentColor" />
+              <h3 className="text-xl font-f1 font-bold uppercase italic">¡MODO COMPETITIVO DESBLOQUEADO!</h3>
+              <Zap size={24} fill="currentColor" />
+            </div>
+            <p className="text-slate-300 text-xs font-bold uppercase tracking-widest">Has ganado {consecutiveWins} mundiales seguidos. Estás listo para el siguiente nivel.</p>
+          </div>
+        )}
 
         {/* Competitive Mode Badge */}
         {isCompetitive && (
@@ -71,58 +94,49 @@ const SeasonFinale: React.FC<SeasonFinaleProps> = ({ mode, canAdvanceCompetitive
           </div>
         </div>
 
-        {/* Full Standings Summary */}
-        <div className="w-full bg-slate-900/40 border border-slate-800 rounded-[2.5rem] overflow-hidden mb-16 shadow-2xl">
-          <table className="w-full text-left">
-            <thead className="bg-slate-950/50 border-b border-slate-800">
-              <tr className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-                <th className="px-8 py-4">Pos</th>
-                <th className="px-8 py-4">Piloto</th>
-                <th className="px-8 py-4 text-right">Puntos Totales</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/50">
-              {standings.slice(3, 10).map((d, i) => (
-                <tr key={d.name} className="hover:bg-slate-800/20">
-                  <td className="px-8 py-4 font-f1 text-slate-500">{i + 4}</td>
-                  <td className="px-8 py-4 text-white font-bold italic uppercase tracking-tighter">{d.name}</td>
-                  <td className="px-8 py-4 text-right font-f1 text-slate-400">{d.points}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
         {/* Actions */}
-        <div className="flex flex-col md:flex-row gap-6 w-full relative">
-           {failedCompetitive && (
-             <div className="absolute -top-12 left-0 w-full text-center">
-                <p className="text-red-500 font-black text-[10px] uppercase tracking-[0.4em] animate-pulse">Has sido despedido por falta de resultados competitivos.</p>
-             </div>
+        <div className="flex flex-col gap-6 w-full max-w-2xl">
+           {showCompetitiveButton && (
+             <button 
+               onClick={onStartCompetitive}
+               className="w-full py-8 bg-gradient-to-r from-yellow-600 via-yellow-400 to-yellow-600 text-black font-black uppercase tracking-[0.2em] rounded-[2rem] shadow-[0_0_50px_rgba(234,179,8,0.4)] hover:scale-105 transition-all flex items-center justify-center gap-4 animate-pulse group"
+             >
+               <Zap size={32} className="group-hover:rotate-12 transition-transform" fill="currentColor" />
+               <span className="text-xl italic font-f1">JUGAR COMPETITIVO</span>
+               <Zap size={32} className="group-hover:-rotate-12 transition-transform" fill="currentColor" />
+             </button>
            )}
-           <button 
-             onClick={onRestartSeason}
-             disabled={failedCompetitive}
-             className={`flex-1 py-6 rounded-3xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-4 shadow-2xl group ${
-               failedCompetitive 
-               ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50' 
-               : 'bg-white text-black hover:bg-yellow-500'
-             }`}
-           >
-             <Play size={24} className={failedCompetitive ? "" : "group-hover:scale-125 transition-transform"} />
-             {failedCompetitive ? "PROGRESIÓN BLOQUEADA" : "Siguiente Temporada"}
-           </button>
-           <button 
-             onClick={onFullReset}
-             className={`flex-1 py-6 rounded-3xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-4 border ${
-               failedCompetitive 
-               ? 'bg-red-600 text-white border-red-500 shadow-red-900/40 hover:scale-105' 
-               : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:bg-red-600/20'
-             }`}
-           >
-             <RotateCcw size={24} />
-             {failedCompetitive ? "REINTENTAR DESDE CERO" : "Reiniciar Carrera"}
-           </button>
+
+           <div className="flex flex-col md:flex-row gap-6 w-full relative">
+              {failedCompetitive && (
+                <div className="absolute -top-12 left-0 w-full text-center">
+                    <p className="text-red-500 font-black text-[10px] uppercase tracking-[0.4em] animate-pulse">Has sido despedido por falta de resultados competitivos.</p>
+                </div>
+              )}
+              <button 
+                onClick={onRestartSeason}
+                disabled={failedCompetitive}
+                className={`flex-1 py-6 rounded-3xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-4 shadow-2xl group ${
+                  failedCompetitive 
+                  ? 'bg-slate-800 text-slate-600 cursor-not-allowed opacity-50' 
+                  : 'bg-white text-black hover:bg-slate-200'
+                }`}
+              >
+                <Play size={24} className={failedCompetitive ? "" : "group-hover:scale-125 transition-transform"} />
+                {failedCompetitive ? "PROGRESIÓN BLOQUEADA" : "Siguiente Temporada"}
+              </button>
+              <button 
+                onClick={onFullReset}
+                className={`flex-1 py-6 rounded-3xl font-black uppercase tracking-widest transition-all flex items-center justify-center gap-4 border ${
+                  failedCompetitive 
+                  ? 'bg-red-600 text-white border-red-500 shadow-red-900/40 hover:scale-105' 
+                  : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white hover:bg-red-600/20'
+                }`}
+              >
+                <RotateCcw size={24} />
+                {failedCompetitive ? "REINTENTAR DESDE CERO" : "Reiniciar Carrera"}
+              </button>
+           </div>
         </div>
         
         <p className="mt-12 text-slate-600 text-[10px] font-black uppercase tracking-[0.8em]">End of Season Performance Report</p>

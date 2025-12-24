@@ -196,6 +196,7 @@ const App: React.FC = () => {
         difficultyMultiplier: 1.1 
       }));
       setShowModeSelector(false);
+      setShowSeasonFinale(false);
       setActiveTab('dashboard');
       return;
     }
@@ -258,9 +259,9 @@ const App: React.FC = () => {
     });
 
     if (gameState.currentRaceIndex + 1 >= MAX_RACES_PER_SEASON) {
-      const winner = driverStandings[0];
-      const teamOfWinner = gameState.teams.find(t => t.drivers.some(d => d.name === winner?.name));
-      const playerWon = teamOfWinner?.id === 0;
+      // Calculamos standings actuales para verificar ganador
+      const currentWinner = driverStandings[0];
+      const playerWon = gameState.teams[0].drivers.some(d => d.name === currentWinner?.name);
 
       setGameState(prev => {
         const newConsecutive = playerWon ? prev.consecutiveWdcWins + 1 : 0;
@@ -506,7 +507,17 @@ const App: React.FC = () => {
         </div>
       </main>
       {isRacing && <RaceSimulation teams={gameState.teams} currentRaceIndex={gameState.currentRaceIndex} onFinish={handleFinishRace} isHost={gameState.isHost || gameState.mode !== 'online'} roomCode={gameState.roomCode} difficultyMultiplier={gameState.difficultyMultiplier} />}
-      {showSeasonFinale && <SeasonFinale mode={gameState.mode} canAdvanceCompetitive={canAdvanceCompetitive} standings={driverStandings} onRestartSeason={handleRestartSeason} onFullReset={() => setShowModeSelector(true)} />}
+      {showSeasonFinale && (
+        <SeasonFinale 
+          mode={gameState.mode} 
+          canAdvanceCompetitive={canAdvanceCompetitive} 
+          standings={driverStandings} 
+          onRestartSeason={handleRestartSeason} 
+          onFullReset={() => setShowModeSelector(true)} 
+          onStartCompetitive={() => handleStartGame('competitive')}
+          consecutiveWins={gameState.consecutiveWdcWins}
+        />
+      )}
       {showTutorial && <Tutorial onClose={() => setShowTutorial(false)} onStepChange={setActiveTab} />}
     </div>
   );
