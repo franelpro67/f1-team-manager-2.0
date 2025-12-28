@@ -79,8 +79,16 @@ export const AVAILABLE_ENGINEERS: Engineer[] = [
 ];
 
 export const AVAILABLE_SPONSORS: Sponsor[] = [
-  { id: 's1', name: 'Velocity Energy', payoutPerRace: 4500000, signingBonus: 5000000, logoColor: 'bg-yellow-500', category: 'Energy Drink', targetPosition: 3 },
-  { id: 's2', name: 'Apex Logistics', payoutPerRace: 2800000, signingBonus: 8000000, logoColor: 'bg-blue-600', category: 'Logistics', targetPosition: 10 },
-  { id: 's3', name: 'Zenith Watches', payoutPerRace: 5000000, signingBonus: 2000000, logoColor: 'bg-slate-300', category: 'Luxury', targetPosition: 1 },
-  { id: 's4', name: 'CyberStream', payoutPerRace: 3200000, signingBonus: 4000000, logoColor: 'bg-purple-600', category: 'Tech', targetPosition: 5 },
+  { id: 's1', name: 'Oracle', payoutPerRace: 6500000, signingBonus: 12000000, logoColor: 'bg-blue-900', category: 'Cloud Computing', targetPosition: 1 },
+  { id: 's2', name: 'Petronas', payoutPerRace: 4800000, signingBonus: 9000000, logoColor: 'bg-teal-500', category: 'Energy & Oil', targetPosition: 3 },
+  { id: 's3', name: 'Shell', payoutPerRace: 4200000, signingBonus: 8000000, logoColor: 'bg-yellow-500', category: 'Fuel & Oil', targetPosition: 5 },
+  { id: 's4', name: 'Aramco', payoutPerRace: 7000000, signingBonus: 15000000, logoColor: 'bg-green-600', category: 'Energy', targetPosition: 1 },
+  { id: 's5', name: 'Google Chrome', payoutPerRace: 3500000, signingBonus: 6000000, logoColor: 'bg-blue-500', category: 'Technology', targetPosition: 8 },
+  { id: 's6', name: 'TAG Heuer', payoutPerRace: 3000000, signingBonus: 5000000, logoColor: 'bg-red-700', category: 'Luxury Watches', targetPosition: 10 },
+  { id: 's7', name: 'AWS', payoutPerRace: 5500000, signingBonus: 10000000, logoColor: 'bg-orange-500', category: 'Cloud Services', targetPosition: 3 },
+  { id: 's8', name: 'Rolex', payoutPerRace: 4000000, signingBonus: 4000000, logoColor: 'bg-green-900', category: 'Luxury', targetPosition: 5 },
+  { id: 's9', name: 'Castrol', payoutPerRace: 2500000, signingBonus: 3000000, logoColor: 'bg-green-500', category: 'Lubricants', targetPosition: 12 },
+  { id: 's10', name: 'Stake', payoutPerRace: 5000000, signingBonus: 11000000, logoColor: 'bg-green-400', category: 'Entertainment', targetPosition: 15 },
+  { id: 's11', name: 'Pirelli', payoutPerRace: 3200000, signingBonus: 2000000, logoColor: 'bg-yellow-400', category: 'Tyres', targetPosition: 10 },
+  { id: 's12', name: 'Mobil 1', payoutPerRace: 3800000, signingBonus: 5000000, logoColor: 'bg-blue-800', category: 'Oil & Gas', targetPosition: 6 },
 ];
