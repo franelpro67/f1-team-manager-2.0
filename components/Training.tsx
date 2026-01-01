@@ -11,7 +11,7 @@ interface TrainingProps {
 const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
   /**
    * Calcula el coste dinámico con un incremento del 25% por punto.
-   * El umbral se ha bajado a 75 para que el jugador sienta el aumento de valor progresivo.
+   * El crecimiento es infinito, pero el coste se vuelve prohibitivo rápidamente.
    */
   const calculateCost = (baseCost: number, currentStat: number) => {
     const penaltyThreshold = 75; 
@@ -24,6 +24,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
   };
 
   const getDifficultyLabel = (stat: number) => {
+    if (stat >= 100) return { label: 'MAS ALLÁ DE LA LEYENDA', color: 'text-pink-500' };
     if (stat >= 95) return { label: 'PERFECCIÓN', color: 'text-purple-400' };
     if (stat >= 90) return { label: 'NIVEL MAESTRO', color: 'text-orange-400' };
     if (stat >= 80) return { label: 'ALTO RENDIMIENTO', color: 'text-yellow-400' };
@@ -37,17 +38,17 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
       name: 'Simulador de Élite', 
       stat: 'pace', 
       gain: 2, 
-      baseCost: 4000000, // 50% más barato que el original de 8M
+      baseCost: 4000000,
       icon: <Zap size={20} />, 
       color: 'text-red-500', 
-      desc: 'Optimización de trazadas y puntos de frenada.' 
+      desc: 'Optimización de trazadas y puntos de frenada sin límites.' 
     },
     { 
       id: 'consistency', 
       name: 'Neuro-Coaching', 
       stat: 'consistency', 
       gain: 3, 
-      baseCost: 3000000, // 50% más barato que el original de 6M
+      baseCost: 3000000,
       icon: <ShieldCheck size={20} />, 
       color: 'text-blue-500', 
       desc: 'Control de estrés y reducción de errores en stint largo.' 
@@ -57,7 +58,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
       name: 'Masterclass Técnica', 
       stat: 'experience', 
       gain: 5, 
-      baseCost: 2000000, // 50% más barato que el original de 4M
+      baseCost: 2000000,
       icon: <TrendingUp size={20} />, 
       color: 'text-green-500', 
       desc: 'Gestión avanzada de neumáticos y ahorro de combustible.' 
@@ -72,15 +73,15 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
             <Dumbbell className="text-red-600" size={40} /> Performance Center
           </h2>
           <p className="text-slate-400 font-medium italic mt-2">
-            Costes base reducidos un 50%. La inversión aumenta un 25% por cada punto de mejora.
+            Entrenamiento ilimitado. Supera las barreras físicas de la F1.
           </p>
         </div>
         <div className="bg-slate-900 border border-slate-800 p-4 rounded-2xl hidden md:block">
            <div className="flex items-center gap-2 text-yellow-500 text-[10px] font-black uppercase tracking-widest mb-1">
-             <AlertTriangle size={12} /> Curva de Aprendizaje
+             <AlertTriangle size={12} /> Progresión Infinita
            </div>
            <p className="text-[10px] text-slate-500 max-w-[200px]">
-             Superar los 75 puntos aplica un multiplicador exponencial del 1.25x por punto.
+             No hay tope de puntos. El coste sube un 25% por cada punto tras los 75.
            </p>
         </div>
       </div>
@@ -104,7 +105,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
                       onError={(e) => { (e.target as HTMLImageElement).src = 'https://media.formula1.com/d_driver_fallback_image.png'; }} 
                     />
                     <div className="absolute -bottom-2 -right-2 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-md shadow-lg italic">
-                      PRO
+                      POTENCIAL
                     </div>
                   </div>
                   <div>
@@ -125,7 +126,6 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
                   const currentVal = driver[prog.stat as keyof Driver] as number;
                   const currentCost = calculateCost(prog.baseCost, currentVal);
                   const canAfford = team.funds >= currentCost;
-                  const isMaxed = currentVal >= 99;
                   const diff = getDifficultyLabel(currentVal);
 
                   return (
@@ -155,17 +155,15 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
                           </span>
                         </div>
                         <button
-                          disabled={!canAfford || isMaxed}
+                          disabled={!canAfford}
                           onClick={() => onTrainDriver(driver.id, prog.stat as any, currentCost)}
                           className={`w-full py-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all ${
-                            isMaxed 
-                            ? 'bg-slate-800 text-slate-500 cursor-not-allowed' 
-                            : !canAfford 
+                            !canAfford 
                             ? 'bg-red-900/20 text-red-500 cursor-not-allowed' 
                             : 'bg-white text-black hover:bg-red-600 hover:text-white shadow-lg group-hover/card:scale-[1.02]'
                           }`}
                         >
-                          {isMaxed ? 'MÁXIMO NIVEL' : 'MEJORAR PILOTO'}
+                          ENTRENAR
                         </button>
                       </div>
                     </div>
@@ -187,7 +185,7 @@ const StatRow = ({ label, value, color }: { label: string, value: number, color:
       <span className="text-white">{value}</span>
     </div>
     <div className="h-1 bg-slate-800 rounded-full overflow-hidden">
-      <div className={`h-full ${color} transition-all duration-700`} style={{ width: `${value}%` }}></div>
+      <div className={`h-full ${color} transition-all duration-700`} style={{ width: `${Math.min(100, value)}%` }}></div>
     </div>
   </div>
 );

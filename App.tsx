@@ -375,7 +375,8 @@ const App: React.FC = () => {
       if (driverIndex === -1 || team.funds < cost) return prev;
       const updatedDrivers = [...team.drivers];
       const gain = stat === 'experience' ? 5 : stat === 'consistency' ? 3 : 2;
-      updatedDrivers[driverIndex] = { ...updatedDrivers[driverIndex], [stat]: Math.min(99, updatedDrivers[driverIndex][stat] + gain) };
+      // Eliminado el tope de Math.min(99, ...)
+      updatedDrivers[driverIndex] = { ...updatedDrivers[driverIndex], [stat]: updatedDrivers[driverIndex][stat] + gain };
       newTeams[prev.currentPlayerIndex] = { ...team, funds: team.funds - cost, drivers: updatedDrivers };
       return { ...prev, teams: newTeams };
     });
