@@ -38,7 +38,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
       name: 'Simulador de Élite', 
       stat: 'pace', 
       gain: 2, 
-      baseCost: 4000000,
+      baseCost: 800000, // 80% más barato (antes 4,000,000)
       icon: <Zap size={20} />, 
       color: 'text-red-500', 
       desc: 'Optimización de trazadas y puntos de frenada sin límites.' 
@@ -48,7 +48,7 @@ const Training: React.FC<TrainingProps> = ({ team, onTrainDriver }) => {
       name: 'Neuro-Coaching', 
       stat: 'consistency', 
       gain: 3, 
-      baseCost: 3000000,
+      baseCost: 600000, // 80% más barato (antes 3,000,000)
       icon: <ShieldCheck size={20} />, 
       color: 'text-blue-500', 
       desc: 'Control de estrés y reducción de errores en stint largo.' 

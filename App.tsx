@@ -240,6 +240,10 @@ const App: React.FC = () => {
         const bestPos = teamRes ? Math.min(teamRes.driver1Position, teamRes.driver2Position) : 20;
         const activeSponsors = AVAILABLE_SPONSORS.filter(s => team.activeSponsorIds.includes(s.id));
         const sponsorPayout = activeSponsors.reduce((sum, s) => bestPos <= s.targetPosition ? sum + s.payoutPerRace : sum, 0);
+        
+        // INGRESOS RESTAURADOS: 
+        // 300k por posición (antes 50k) 
+        // 2M fijo (antes 250k)
         return {
           ...team,
           funds: team.funds + (21 - bestPos) * 300000 + sponsorPayout + 2000000,
@@ -375,7 +379,6 @@ const App: React.FC = () => {
       if (driverIndex === -1 || team.funds < cost) return prev;
       const updatedDrivers = [...team.drivers];
       const gain = stat === 'experience' ? 5 : stat === 'consistency' ? 3 : 2;
-      // Eliminado el tope de Math.min(99, ...)
       updatedDrivers[driverIndex] = { ...updatedDrivers[driverIndex], [stat]: updatedDrivers[driverIndex][stat] + gain };
       newTeams[prev.currentPlayerIndex] = { ...team, funds: team.funds - cost, drivers: updatedDrivers };
       return { ...prev, teams: newTeams };
